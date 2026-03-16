@@ -19,7 +19,7 @@ export default function Dashboard() {
         </div>
 
         <div className="text-black p-4 rounded shadow">
-          Disputes: 3
+          Disputes: 5
         </div>
       </div>
     </div>
