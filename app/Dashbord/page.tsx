@@ -13,9 +13,25 @@ const stats = [
   { label: "Reported Items", value: "Stacked", isImage: true },
 ];
 
-export default function Home() {
+export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#f8fafd] p-8">
+      {/* Top Header */}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-[#2d3748] text-2xl font-bold">Admin Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <div className="p-2 bg-white rounded-lg shadow-sm border border-gray-100">
+            <User size={20} className="text-gray-500" />
+          </div>
+          <img 
+            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" 
+            alt="Admin" 
+            className="w-10 h-10 rounded-lg border-2 border-white shadow-sm"
+          />
+          <Bell size={24} className="text-gray-400 ml-2" />
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, i) => (

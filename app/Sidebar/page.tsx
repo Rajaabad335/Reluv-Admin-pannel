@@ -1,37 +1,67 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { 
+  LayoutDashboard, Users, Package, ShoppingCart, 
+  CreditCard, ShieldCheck, Banknote, Scale, 
+  BarChart3, ListTree, Star, Settings, ShieldAlert, 
+  X
+} from "lucide-react";
 
 const menu = [
-  { name: "Dashboard", path: "/" },
-  { name: "Users", path: "/users" },
-  { name: "Items", path: "/items" },
-  { name: "Orders", path: "/orders" },
-  { name: "Payments", path: "/payments" },
-  { name: "Escrow", path: "/escrow" },
-  { name: "Payouts", path: "/payouts" },
-  { name: "Disputes", path: "/disputes" },
-  { name: "Categories", path: "/categories" },
-  { name: "Settings", path: "/settings" },
+  { name: "Dashboard", path: "/", icon: LayoutDashboard },
+  { name: "Users", path: "/UserManagement", icon: Users },
+  { name: "Orders", path: "/orders", icon: ShoppingCart },
+  { name: "Payments", path: "/Payments", icon: CreditCard },
+  { name: "Payouts", path: "/payouts", icon: Banknote },
+  { name: "Disputes", path: "/Disputes", icon: Scale },
+  { name: "Settings", path: "/settings", icon: Settings },
 ];
 
-export default function Sidebar() {
-  return (
-    <div className="w-64 bg-[#007782] h-full">
-      <div className="p-4 text-xl font-bold">
-        Admin Panel
-      </div>
-      
+export default function Sidebar({ onClose }: { onClose?: () => void }) {
+  const pathname = usePathname();
 
-      {menu.map((m) => (
-        <Link
-          key={m.path}
-          href={m.path}
-          className="block px-4 py-2 hover:bg-blue-600"
-        >
-          {m.name}
-        </Link>
-      ))}
+return (
+    <div className="w-64 bg-[#007782] h-screen text-white flex flex-col font-sans transition-all duration-300">
+      {/* Brand Logo Area */}
+      <div className="p-6 flex justify-between items-center">
+        <h1 className="text-4xl font-black italic tracking-tighter" style={{ fontFamily: 'serif' }}>
+          Reluv
+        </h1>
+        {/* Mobile Close Button */}
+        <button onClick={onClose} className="lg:hidden p-1 hover:bg-white/10 rounded">
+          <X size={24} />
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
+        {menu.map((item) => {
+          const isActive = pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              href={item.path}
+              onClick={onClose}
+              className={`flex items-center gap-4 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                isActive 
+                  ? "bg-white/15 shadow-inner opacity-100" 
+                  : "hover:bg-white/5 opacity-80 hover:opacity-100"
+              }`}
+            >
+              <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <span className={`text-[15px] ${isActive ? "font-bold" : "font-medium"}`}>
+                {item.name}
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
+      
+      <div className="p-4 border-t border-white/10 text-[10px] uppercase tracking-widest opacity-40 text-center">
+        Reluv Admin System
+      </div>
     </div>
   );
 }
