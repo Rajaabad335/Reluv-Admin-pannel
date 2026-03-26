@@ -47,7 +47,7 @@ export default function Settings() {
                 name="commissionRate"
                 value={formData.commissionRate}
                 onChange={handleChange}
-                className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1156be] cursor-pointer"
+                className="w-full appearance-none bg-white border border-[#007782] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007782] cursor-pointer text-gray-800"
               >
                 <option value="5%">5%</option>
                 <option value="10%">10%</option>
@@ -65,7 +65,7 @@ export default function Settings() {
                 name="escrowPeriod"
                 value={formData.escrowPeriod}
                 onChange={handleChange}
-                className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1156be] cursor-pointer"
+                className="w-full appearance-none bg-white border border-[#007782] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007782] cursor-pointer text-gray-800"
               >
                 <option value="3">3</option>
                 <option value="7">7</option>
@@ -83,7 +83,7 @@ export default function Settings() {
                 name="currency"
                 value={formData.currency}
                 onChange={handleChange}
-                className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1156be] cursor-pointer"
+                className="w-full appearance-none bg-white border border-[#007782] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007782] cursor-pointer text-gray-800"
               >
                 <option value="EUR">EUR</option>
                 <option value="USD">USD</option>
@@ -103,7 +103,7 @@ export default function Settings() {
                 value={formData.stripeApiKey}
                 onChange={handleChange}
                 placeholder="sk_test_..."
-                className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1156be]"
+                className="w-full bg-white border border-[#007782] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007782] text-gray-800"
               />
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function Settings() {
           <div className="p-4 md:p-6 flex justify-center bg-[#fcfdfe]">
             <button 
               type="submit"
-              className="w-full md:w-auto bg-[#1156be] hover:bg-[#0e48a1] text-white font-bold px-10 py-3 md:py-2.5 rounded-lg transition-colors shadow-sm"
+              className="w-full md:w-auto bg-[#007782] cursor-pointer text-white font-bold px-10 py-3 md:py-2.5 rounded-lg transition-colors shadow-sm"
             >
               Save Changes
             </button>

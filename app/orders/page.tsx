@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { 
   MoreHorizontal, ChevronDown, ChevronRight, Star, 
-  Undo2, ShieldCheck, Truck, Search, ArrowLeft 
+  Undo2, ShieldCheck, Truck, Search, ArrowLeft, 
+  Trash2
 } from "lucide-react";
 
 // --- MOCK DATA ---
@@ -60,11 +61,11 @@ export default function Orders() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <h1 className="text-[#2d3748] text-2xl font-bold">Orders</h1>
             <div className="relative w-full md:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#007782]" size={18} />
               <input 
                 type="text" 
                 placeholder="Search Order ID..." 
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-[#1156be]/20"
+                className="pl-10 pr-4 py-2 border border-[#007782] rounded-lg w-full focus:outline-none text-gray-800"
               />
             </div>
           </div>
@@ -84,6 +85,7 @@ function OrdersTable({ onSelectOrder }: { onSelectOrder: (o: any) => void }) {
             <tr>
               <th className="px-6 py-4">Order ID</th>
               <th className="px-6 py-4">Buyer</th>
+              <th className="px-6 py-4">Seller</th>
               <th className="px-6 py-4">Amount</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4">Progress</th>
@@ -100,6 +102,7 @@ function OrdersTable({ onSelectOrder }: { onSelectOrder: (o: any) => void }) {
                   {order.id}
                 </td>
                 <td className="px-6 py-5 text-sm font-medium text-gray-700">{order.buyer.name}</td>
+                <td className="px-6 py-5 text-sm font-medium text-gray-700">{order.seller.name}</td>
                 <td className="px-6 py-5 text-sm font-black text-[#1a202c]">{order.amount}</td>
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-2">
@@ -115,7 +118,9 @@ function OrdersTable({ onSelectOrder }: { onSelectOrder: (o: any) => void }) {
                   </span>
                 </td>
                 <td className="px-6 py-5 text-right">
-                  <ChevronDown className="inline text-gray-300" size={18} />
+                   <div className="flex justify-end">
+                        <ActionButtons  />
+                      </div>
                 </td>
               </tr>
             ))}
@@ -213,4 +218,24 @@ function OrderDetailsView({ order }: { order: any }) {
       </div>
     </div>
   );
+}
+function ActionButtons() {
+  const baseClass =
+    "flex items-center border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm shrink-0";
+  const btnClass =
+    "px-3 py-1.5 hover:bg-gray-50 transition-colors text-[#1156be] text-sm font-bold border-r border-gray-200 last:border-0";
+  const iconClass =
+    "px-2 py-1.5 text-gray-400 hover:bg-gray-50 border-r border-gray-200 last:border-0";
+  return (
+    <div className={baseClass}>
+      <button className={btnClass}>View</button>
+      <button className={iconClass}>Edit</button>
+      {/* <button className={iconClass}><Lock size={14} /></button> */}
+      <button className="px-2 py-1.5 text-red-500">
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+
+  return null;
 }
