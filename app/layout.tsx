@@ -1,15 +1,15 @@
+import { AuthProvider } from "../app/context/AuthContext";
+import AuthGate from "../app/components/AuthGate";
 import "./globals.css";
-import AdminLayout from "../app/AdminLayout/page";
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html>
       <body>
-        <AdminLayout>{children}</AdminLayout>
+        <AuthProvider>
+          <AuthGate>
+            {children}
+          </AuthGate>
+        </AuthProvider>
       </body>
     </html>
   );
