@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
   ChevronDown,
@@ -56,29 +56,65 @@ const mockUsers = [
   },
 ];
 
-export default function UserManagement() {
+export default function UserManagement(this: any) {
+  const [users, setUsers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("All Users");
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+ const fetchDashboardData = async () => {
+  try {
+    setLoading(true);
 
-  // Logic to filter users based on the Active Tab and Search Input
-  const filteredUsers = useMemo(() => {
-    return mockUsers.filter((user) => {
-      // 1. Filter by Tab
-      const matchesTab =
-        activeTab === "All Users" ||
-        (activeTab === "Active" && user.status === "Active") ||
-        (activeTab === "Sellers" && user.role === "Seller") ||
-        (activeTab === "Banned" && user.status === "Banned");
+    const res = await fetch("http://localhost:1337/api/all-users");
+    if (!res.ok) return;
 
-      // 2. Filter by Search Query (Name or Email)
-      const matchesSearch =
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const result = await res.json();
+    console.log("API Response:", result);
 
-      return matchesTab && matchesSearch;
-    });
-  }, [activeTab, searchQuery]);
+    // ✅ Store raw users
+    setUsers(result?.data || []);
+  } catch (err) {
+    console.log("API failed:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
+/** 🔹 Run once on mount */
+useEffect(() => {
+  console.log("COMPONENT MOUNTED");
+  fetchDashboardData();
+}, []);
+
+const filteredUsers = useMemo(() => {
+  return users.filter((user: any) => {
+    // 1. Tab Filter
+    const matchesTab =
+      activeTab === "All Users" ||
+      (activeTab === "Active" && user.blocked === false) ||
+      (activeTab === "Sellers" && user.accountType === "user") ||
+      (activeTab === "Banned" && user.blocked === true);
+
+    // 2. Search Filter
+    const matchesSearch =
+      user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesTab && matchesSearch;
+  });
+}, [users, activeTab, searchQuery]);
+
+
+
+   /* ---------------- LOADING UI ---------------- */
+
+  if (loading) {
+    return (
+      <div className="min-h-[300px] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-teal-600" />
+      </div>
+    );
+  }
   return (
     <div className="p-4 md:p-8 bg-[#f8fafd] min-h-screen font-sans">
       <h1 className="text-[#2d3748] text-2xl font-bold mb-4">
@@ -142,7 +178,7 @@ export default function UserManagement() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filteredUsers.length > 0 ? (
-                filteredUsers.map((user, idx) => (
+                filteredUsers.map((user: any, idx: any) => (
                   <tr
                     key={idx}
                     className="hover:bg-gray-50/50 transition-colors"
@@ -157,19 +193,19 @@ export default function UserManagement() {
                       {user.id}
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-800">
-                      {user.name}
+                      {user.username}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {user.email}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                      {user.role}
+                      {user.accountType}
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded text-xs font-bold text-white ${user.status === "Banned" ? "bg-red-500" : "bg-[#007782]"}`}
+                        className={`px-3 py-1 rounded text-xs font-bold text-white ${user.blocked == true ? "bg-red-500" : "bg-[#007782]"}`}
                       >
-                        {user.status}
+                        {user.blocked == true ? "Banned" : "Active"}
                       </span>
                     </td>
                     <td className="px-6 py-4">

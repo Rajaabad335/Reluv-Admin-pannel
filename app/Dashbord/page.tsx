@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { MoreHorizontal, Bell, User } from "lucide-react";
+// import { io } from "socket.io-client";
 
-const stats = [
+/** 🔹 Default fallback data (UNCHANGED) */
+const defaultStats = [
   { label: "Total Users", value: "23,540", color: "text-[#007782]" },
   { label: "Total Sellers", value: "8,120", color: "text-[#1156be]" },
   { label: "Total Orders", value: "15,430", color: "text-slate-800" },
@@ -13,7 +16,59 @@ const stats = [
   { label: "Reported Items", value: "Stacked", isImage: true },
 ];
 
+const defaultOrders = [
+  { id: "60,3803", buyer: "Eivaf Robers", amount: "$5,000", status: "Paid" },
+  { id: "€0,4863", buyer: "Kalle Trenssse", amount: "$5,600", status: "Seller" },
+];
+
+const defaultPayouts = [
+  { name: "Mark Mondez", amount: "€11,009.50" },
+  { name: "Goby Bariho", amount: "€694,500" },
+];
+
 export default function Dashboard() {
+  /** 🔹 State (UNCHANGED UI behavior) */
+  const [stats, setStats] = useState(defaultStats);
+  const [orders, setOrders] = useState(defaultOrders);
+  const [payouts, setPayouts] = useState(defaultPayouts);
+
+  /** 🔹 API Call Function */
+  const fetchDashboardData = async () => {
+    try {
+      const res = await fetch("http://localhost:1337/api/dashboard-data");
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      if (data?.stats) setStats(data.stats);
+      if (data?.orders) setOrders(data.orders);
+      if (data?.payouts) setPayouts(data.payouts);
+
+    } catch (err) {
+      console.log("API failed, using default data");
+    }
+  };
+
+  /** 🔹 Run once on component mount */
+  useEffect(() => {
+     console.log("COMPONENT MOUNTED");
+    fetchDashboardData();
+  }, []);
+
+  // /** 🔹 Socket Integration */
+  // useEffect(() => {
+  //   const socket = io("http://localhost:3001"); // 🔥 your socket server
+
+  //   socket.on("dashboard:update", () => {
+  //     console.log("Socket update received");
+  //     fetchDashboardData(); // 🔥 refresh data ONLY when event comes
+  //   });
+
+  //   return () => {
+  //     socket.disconnect();
+  //   };
+  // }, []);
+
   return (
     <div className="min-h-screen bg-[#f8fafd] p-8">
       {/* Top Header */}
@@ -23,9 +78,9 @@ export default function Dashboard() {
           <div className="p-2 bg-white rounded-lg shadow-sm border border-gray-100">
             <User size={20} className="text-gray-500" />
           </div>
-          <img 
-            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" 
-            alt="Admin" 
+          <img
+            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+            alt="Admin"
             className="w-10 h-10 rounded-lg border-2 border-white shadow-sm"
           />
           <Bell size={24} className="text-gray-400 ml-2" />
@@ -35,8 +90,14 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-50">
-            <p className="text-gray-500 text-sm font-semibold mb-2">{stat.label}</p>
+          <div
+            key={i}
+            className="bg-white p-6 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-50"
+          >
+            <p className="text-gray-500 text-sm font-semibold mb-2">
+              {stat.label}
+            </p>
+
             {stat.isImage ? (
               <div className="flex -space-x-3 mt-2">
                 <div className="w-8 h-8 rounded-full bg-teal-400 border-2 border-white" />
@@ -44,67 +105,97 @@ export default function Dashboard() {
                 <div className="w-8 h-8 rounded-full bg-orange-300 border-2 border-white" />
               </div>
             ) : (
-              <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+              <p className={`text-3xl font-bold ${stat.color}`}>
+                {stat.value}
+              </p>
             )}
           </div>
         ))}
       </div>
 
-      {/* Recent Orders Section */}
+      {/* Recent Orders */}
       <div className="bg-white rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-50 overflow-hidden">
         <div className="p-6 flex justify-between items-center border-b border-gray-50">
-          <h2 className="text-lg font-bold text-[#2d3748]">Recent Orders</h2>
+          <h2 className="text-lg font-bold text-[#2d3748]">
+            Recent Orders
+          </h2>
           <MoreHorizontal className="text-gray-400 cursor-pointer" />
         </div>
+
         <table className="w-full text-left">
           <thead className="bg-gray-50/50 text-gray-400 text-sm uppercase">
             <tr>
-              <th className="px-6 py-4 font-semibold text-xs">Order ID</th>
-              <th className="px-6 py-4 font-semibold text-xs">Buyer</th>
-              <th className="px-6 py-4 font-semibold text-xs">Amount</th>
-              <th className="px-6 py-4 font-semibold text-xs">Status</th>
-              <th className="px-6 py-4 font-semibold text-xs text-right">Action</th>
+              <th className="px-6 py-4 text-xs">Order ID</th>
+              <th className="px-6 py-4 text-xs">Buyer</th>
+              <th className="px-6 py-4 text-xs">Amount</th>
+              <th className="px-6 py-4 text-xs">Status</th>
+              <th className="px-6 py-4 text-xs text-right">Action</th>
             </tr>
           </thead>
+
           <tbody className="divide-y divide-gray-50">
-            <OrderRow id="60,3803" buyer="Eivaf Robers" amount="$5,000" status="Paid" statusColor="bg-green-100 text-green-700" />
-            <OrderRow id="€0,4863" buyer="Kalle Trenssse" amount="$5,600" status="Seller" statusColor="bg-orange-100 text-orange-700" />
+            {orders.map((order: any, i: number) => (
+              <OrderRow
+                key={i}
+                id={order.id}
+                buyer={order.buyer}
+                amount={order.amount}
+                status={order.status}
+                statusColor={
+                  order.status === "Paid"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-orange-100 text-orange-700"
+                }
+              />
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* Bottom Grid for Payouts/Reports */}
+      {/* Bottom Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-        {/* Simplified Pending Payouts Card */}
+        {/* Payouts */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-50">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="font-bold text-[#2d3748]">Pending Payouts</h2>
+            <h2 className="font-bold text-[#2d3748]">
+              Pending Payouts
+            </h2>
             <MoreHorizontal size={18} className="text-gray-300" />
           </div>
+
           <div className="space-y-4">
-            <PayoutItem name="Mark Mondez" amount="€11,009.50" />
-            <PayoutItem name="Goby Bariho" amount="€694,500" />
+            {payouts.map((p: any, i: number) => (
+              <PayoutItem key={i} name={p.name} amount={p.amount} />
+            ))}
           </div>
         </div>
 
+        {/* Reported Items */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-50">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="font-bold text-[#2d3748]">Reported Items</h2>
+            <h2 className="font-bold text-[#2d3748]">
+              Reported Items
+            </h2>
             <MoreHorizontal size={18} className="text-gray-300" />
           </div>
+
           <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-             <div className="w-10 h-10 bg-orange-100 rounded" />
-             <div className="flex-1">
-               <p className="text-sm font-medium">Held in Escrow</p>
-               <p className="text-xs text-gray-400">Reason: Pending</p>
-             </div>
-             <span className="px-3 py-1 bg-blue-100 text-blue-700 text-[10px] rounded uppercase font-bold">Detailed</span>
+            <div className="w-10 h-10 bg-orange-100 rounded" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Held in Escrow</p>
+              <p className="text-xs text-gray-400">Reason: Pending</p>
+            </div>
+            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-[10px] rounded uppercase font-bold">
+              Detailed
+            </span>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+/** 🔹 Sub Components (UNCHANGED) */
 
 function OrderRow({ id, buyer, amount, status, statusColor }: any) {
   return (
@@ -113,7 +204,7 @@ function OrderRow({ id, buyer, amount, status, statusColor }: any) {
       <td className="px-6 py-4 text-sm text-blue-500 font-medium">{buyer}</td>
       <td className="px-6 py-4 text-sm font-bold text-slate-800">{amount}</td>
       <td className="px-6 py-4">
-        <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${statusColor}`}>
+        <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase ${statusColor}`}>
           {status}
         </span>
       </td>
@@ -128,10 +219,12 @@ function PayoutItem({ name, amount }: any) {
   return (
     <div className="flex items-center justify-between p-2 border-b border-gray-50 last:border-0">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden" />
+        <div className="w-10 h-10 bg-gray-200 rounded-lg" />
         <span className="text-sm font-medium text-slate-700">{name}</span>
       </div>
       <span className="font-bold text-slate-800">{amount}</span>
     </div>
   );
 }
+//    should be in backend
+// socket.emit("dashboard:update");
