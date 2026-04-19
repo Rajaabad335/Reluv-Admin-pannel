@@ -1,57 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Bell, User } from "lucide-react";
 // import { io } from "socket.io-client";
 
-/** 🔹 Default fallback data (UNCHANGED) */
-const defaultStats = [
-  { label: "Total Users", value: "23,540", color: "text-[#007782]" },
-  { label: "Total Sellers", value: "8,120", color: "text-[#1156be]" },
-  { label: "Total Orders", value: "15,430", color: "text-slate-800" },
-  { label: "Pending Payouts", value: "€4,320", color: "text-green-600" },
-  { label: "Active Disputes", value: "18", color: "text-slate-800" },
-  { label: "Revenue", value: "€61,750", color: "text-[#007782]" },
-  { label: "Revenue 4", value: "€12,540", color: "text-orange-500" },
-  { label: "Reported Items", value: "Stacked", isImage: true },
-];
-
-const defaultOrders = [
-  { id: "60,3803", buyer: "Eivaf Robers", amount: "$5,000", status: "Paid" },
-  { id: "€0,4863", buyer: "Kalle Trenssse", amount: "$5,600", status: "Seller" },
-];
-
-const defaultPayouts = [
-  { name: "Mark Mondez", amount: "€11,009.50" },
-  { name: "Goby Bariho", amount: "€694,500" },
-];
-
 export default function Home() {
   /** 🔹 State (UNCHANGED UI behavior) */
-  const [stats, setStats] = useState(defaultStats);
-  const [orders, setOrders] = useState(defaultOrders);
-  const [payouts, setPayouts] = useState(defaultPayouts);
+  const [stats, setStats] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [payouts, setPayouts] = useState([]);
+  const [loading, setLoading] = useState(true); 
+  const hasFetched = useRef(false);
 
-  /** 🔹 API Call Function */
+
+
   const fetchDashboardData = async () => {
+    setLoading(true); // ← NEW
     try {
       const res = await fetch("http://localhost:1337/api/dashboard-data");
       if (!res.ok) return;
 
-      const data = await res.json();
+      const json = await res.json();
+      const data = json?.data; // ← FIXED: unwrap nested data key
 
-      if (data?.stats) setStats(data.stats);
-      if (data?.orders) setOrders(data.orders);
+      if (data?.stats)   setStats(data.stats);
+      if (data?.orders)  setOrders(data.orders);
       if (data?.payouts) setPayouts(data.payouts);
 
     } catch (err) {
       console.log("API failed, using default data");
+    } finally {
+      setLoading(false); // ← NEW
     }
-  };
+  }
 
   /** 🔹 Run once on component mount */
   useEffect(() => {
-     console.log("COMPONENT MOUNTED");
+  if (hasFetched.current) return;
+  hasFetched.current = true;
     fetchDashboardData();
   }, []);
 
@@ -69,6 +55,18 @@ export default function Home() {
   //   };
   // }, []);
 
+  // ── Loader ─────────────────────────────────────────────────────── NEW
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f8fafd] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#007782] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f8fafd] p-8">   
       {/* Stats Grid */}
@@ -79,20 +77,11 @@ export default function Home() {
             className="bg-white p-6 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-50"
           >
             <p className="text-gray-500 text-sm font-semibold mb-2">
-              {stat.label}
+              {stat?.label}
             </p>
-
-            {stat.isImage ? (
-              <div className="flex -space-x-3 mt-2">
-                <div className="w-8 h-8 rounded-full bg-teal-400 border-2 border-white" />
-                <div className="w-8 h-8 rounded-full bg-blue-400 border-2 border-white" />
-                <div className="w-8 h-8 rounded-full bg-orange-300 border-2 border-white" />
-              </div>
-            ) : (
-              <p className={`text-3xl font-bold ${stat.color}`}>
-                {stat.value}
+              <p className={`text-3xl font-bold ${stat?.color}`}>
+                {stat?.value}
               </p>
-            )}
           </div>
         ))}
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search,
   ChevronDown,
@@ -12,55 +12,13 @@ import {
   Trash2,
 } from "lucide-react";
 
-const mockUsers = [
-  {
-    id: 22,
-    name: "Laura Mendez",
-    email: "laura@example.com",
-    role: "Seller",
-    status: "Active",
-    type: "view",
-  },
-  {
-    id: 40,
-    name: "Adam Fauz",
-    email: "adam@example.com",
-    role: "Seller",
-    status: "Active",
-    type: "verify",
-  },
-  {
-    id: 53,
-    name: "Danny Hortz",
-    email: "danny@example.com",
-    role: "Seller",
-    status: "Active",
-    type: "verify",
-  },
-  {
-    id: 54,
-    name: "Yamis Chohin",
-    email: "yamis@example.com",
-    role: "Admin",
-    status: "Active",
-    type: "verify",
-  },
-  {
-    id: 62,
-    name: "Mark Hopkins",
-    email: "mark@example.com",
-    role: "Seller",
-    status: "Active",
-    type: "wallet",
-    amount: "150.75€",
-  },
-];
-
 export default function UserManagement(this: any) {
   const [users, setUsers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("All Users");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const hasFetched = useRef(false);
+
  const fetchDashboardData = async () => {
   try {
     setLoading(true);
@@ -82,7 +40,8 @@ export default function UserManagement(this: any) {
 
 /** 🔹 Run once on mount */
 useEffect(() => {
-  console.log("COMPONENT MOUNTED");
+     if (hasFetched.current) return;
+  hasFetched.current = true;
   fetchDashboardData();
 }, []);
 
