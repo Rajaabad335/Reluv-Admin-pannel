@@ -6,6 +6,7 @@ type User = {
   id: number;
   username: string;
   email: string;
+  avatar: string
 };
 
 type AuthContextType = {
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setJwt(null);
     setUser(null);
+      window.location.replace("/");
   };
 
   return (
