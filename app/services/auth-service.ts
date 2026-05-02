@@ -15,9 +15,16 @@ export function register(username: string, email: string, password: string) {
 }
 export function getUser(id: number) {
   return apiRequest(
-    `/users/${id}?populate[products][populate]=*&populate[role]=*&populate[received_reviews][populate]=*&populate[following][populate]=*&populate[followers][populate]=*&populate[avatar][populate]=*`, 
+    `/users/${id}?populate[products][populate]=*&populate[role]=*&populate[received_reviews][populate]=*&populate[following][populate]=*&populate[followers][populate]=*`, 
     {
       method: "GET",
+    }
+  );
+}
+export function getUserAvatr(id: number) {
+  return apiRequest(
+    `/users/${id}?populate[avatar][populate]=*`,
+     { method: "GET",
     }
   );
 }

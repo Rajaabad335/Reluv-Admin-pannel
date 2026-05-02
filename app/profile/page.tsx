@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "../context/AuthContext";
-import { getUser, updateUserProfile } from "../services/auth-service";
+import { getUser, getUserAvatr, updateUserProfile } from "../services/auth-service";
 import { useEffect, useState, useRef } from "react";
 
 export default function ProfileSetting() {
@@ -34,12 +34,7 @@ export default function ProfileSetting() {
       try {
         setLoading(true);
         const data = await getUser(Number(user.id));
-        // const res = await fetch("http://localhost:1337/api/all-users");
-        // if (!res.ok) return;
-
-        // const data = await res.json();
-        // console.log("API Response:", data);
-
+        const userAvatar = await getUserAvatr(Number(user.id));
         setFormData({
           username: data.username || "",
           about: data.about || "",
@@ -48,8 +43,8 @@ export default function ProfileSetting() {
           showCity: data.isShowCity ?? true,
         });
 
-        if (data.avatar?.url) {
-          setAvatarPreview(data.avatar.url);
+        if (userAvatar.avatar?.url) {
+          setAvatarPreview(userAvatar.avatar.url);
         }
       } catch {
         setError("Failed to load profile data.");
