@@ -58,16 +58,38 @@ export async function loginWithGoogle(token: string) {
   if (!res.ok) throw new Error(await res.text());
   return res.json(); 
 }
-export async function loginWithFacebook(accessToken: string) {
-  const res = await fetch(`http://localhost:1337/auth/facebook`, {
+export function sendOtp(email: string, username: string, password: string) {
+  return apiRequest("/email-otp/send", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ access_token: accessToken }),
+    body: JSON.stringify({ email, username, password }),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message || "Facebook login failed");
-  }
-  return res.json(); // expects { jwt, user }
+}
+
+export function verifyOtp(email: string, otp: string) {
+  return apiRequest("/email-otp/verify", {
+    method: "POST",
+    body: JSON.stringify({ email, otp }),
+  });
+}
+
+export function forgotPasswordSendOtp(email: string) {
+  return apiRequest("/password-reset/send-otp", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function forgotPasswordVerifyOtp(email: string, otp: string) {
+  return apiRequest("/password-reset/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({ email, otp }),
+  });
+}
+
+export function forgotPasswordReset(email: string, otp: string, password: string) {
+  return apiRequest("/password-reset/reset", {
+    method: "POST",
+    body: JSON.stringify({ email, otp, password }),
+  });
 }
 
