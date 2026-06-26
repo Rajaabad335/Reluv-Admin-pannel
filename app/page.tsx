@@ -60,8 +60,8 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-[#f8fafd] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#007782] border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-400 text-sm font-medium">Loading dashboard...</p>
+          <div className="w-12 h-12 border-4 border-[#cb6f4d] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium">Loading ...</p>
         </div>
       </div>
     );

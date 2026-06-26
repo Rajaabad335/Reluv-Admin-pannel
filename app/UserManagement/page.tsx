@@ -69,8 +69,11 @@ const filteredUsers = useMemo(() => {
 
   if (loading) {
     return (
-      <div className="min-h-[300px] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-teal-600" />
+      <div className="min-h-screen bg-[#f8fafd] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#cb6f4d] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium">Loading ...</p>
+        </div>
       </div>
     );
   }
@@ -90,7 +93,7 @@ const filteredUsers = useMemo(() => {
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 md:px-6 py-2 text-sm font-semibold transition-colors whitespace-nowrap border-r border-gray-100 last:border-0 ${
                   activeTab === tab
-                    ? "bg-[#007782] text-white cursor-pointer"
+                    ? "bg-[#cb6f4d] text-white cursor-pointer"
                     : "text-gray-500 hover:bg-gray-50 cursor-pointer"
                 }`}
               >
@@ -103,7 +106,7 @@ const filteredUsers = useMemo(() => {
         {/* Search Input */}
         <div className="relative w-full md:w-72">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#007782]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#cb6f4d]"
             size={18}
           />
           <input
@@ -111,7 +114,7 @@ const filteredUsers = useMemo(() => {
             placeholder="Search users..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-[#007782] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1156be]/20 bg-white text-gray-800 text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-[#cb6f4d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1156be]/20 bg-white text-gray-800 text-sm"
           />
         </div>
       </div>
@@ -162,7 +165,7 @@ const filteredUsers = useMemo(() => {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded text-xs font-bold text-white ${user.blocked == true ? "bg-red-500" : "bg-[#007782]"}`}
+                        className={`px-3 py-1 rounded text-xs font-bold text-white ${user.blocked == true ? "bg-red-500" : "bg-[#cb6f4d]"}`}
                       >
                         {user.blocked == true ? "Banned" : "Active"}
                       </span>
@@ -197,7 +200,7 @@ function ActionButtons({ type, amount }: { type: string; amount?: string }) {
   const baseClass =
     "flex items-center border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm shrink-0";
   const btnClass =
-    "px-3 py-1.5 hover:bg-gray-50 transition-colors text-[#007782] text-sm font-bold border-r border-gray-200 last:border-0";
+    "px-3 py-1.5 hover:bg-gray-50 transition-colors text-[#cb6f4d] text-sm font-bold border-r border-gray-200 last:border-0";
   return (
     <div className={baseClass}>
       <button className={btnClass}>View</button>

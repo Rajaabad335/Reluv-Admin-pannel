@@ -41,8 +41,8 @@ export default function Orders() {
     return (
       <div className="min-h-screen bg-[#f8fafd] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#007782] border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-400 text-sm font-medium">Loading dashboard...</p>
+          <div className="w-12 h-12 border-4 border-[#cb6f4d] border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium">Loading ...</p>
         </div>
       </div>
     );
@@ -65,11 +65,11 @@ export default function Orders() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <h1 className="text-[#2d3748] text-2xl font-bold">Orders</h1>
             <div className="relative w-full md:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#007782]" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#cb6f4d]" size={18} />
               <input
                 type="text"
                 placeholder="Search Order ID..."
-                className="pl-10 pr-4 py-2 border border-[#007782] rounded-lg w-full focus:outline-none text-gray-800"
+                className="pl-10 pr-4 py-2 border border-[#cb6f4d] rounded-lg w-full focus:outline-none text-gray-800"
               />
             </div>
           </div>

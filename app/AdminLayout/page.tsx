@@ -38,7 +38,7 @@ export default function AdminLayout({
       {/* 3. Main Body Container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Navigation Bar with Hamburger */}
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 lg:px-8 shrink-0">
+        <header className="h-16 bg-white border-b border-[#cb6f4d] flex items-center justify-between px-4 lg:px-8 shrink-0">
           <div className="flex items-center gap-4">
             {/* Hamburger Button: Only visible on mobile */}
             <button
@@ -48,7 +48,7 @@ export default function AdminLayout({
             >
               <Menu size={24} />
             </button>
-            <h2 className="text-lg font-bold text-[#2d3748] hidden sm:block">
+            <h2 className="text-lg font-bold text-[#cb6f4d] hidden sm:block">
               Admin Dashboard
             </h2>
           </div>

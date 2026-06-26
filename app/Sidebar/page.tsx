@@ -23,7 +23,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
 
 return (
-    <div className="w-64 bg-[#007782] h-screen text-white flex flex-col font-sans transition-all duration-300">
+    <div className="w-64 bg-[#cb6f4d] h-screen text-white flex flex-col font-sans transition-all duration-300">
       {/* Brand Logo Area */}
       <div className="p-6 flex justify-between items-center">
         <h1 className="text-4xl font-black italic tracking-tighter" style={{ fontFamily: 'serif' }}>

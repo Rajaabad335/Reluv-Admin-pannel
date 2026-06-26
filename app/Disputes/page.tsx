@@ -4,7 +4,7 @@ import React from "react";
 import { Search, ChevronDown, Mail } from "lucide-react";
 
 const mockDisputes = [
-  { id: 19, disputeId: "270012022", order: "Lione Pleat", buyer: "Jack Peris", amount: "$16.00", status: "New", statusColor: "bg-[#007782]" },
+  { id: 19, disputeId: "270012022", order: "Lione Pleat", buyer: "Jack Peris", amount: "$16.00", status: "New", statusColor: "bg-[#cb6f4d]" },
   { id: 12, disputeId: "27001023", order: "Bow Botat", buyer: "Jnrtt Peris", amount: "$16.00", status: "Resolved", statusColor: "bg-[#1156be]" },
   { id: 14, disputeId: "27002002", order: "Jota Ames", buyer: "Sarith Assees", amount: "$10.00", status: "In Court", statusColor: "bg-[#56ab65]" },
 ];
@@ -16,11 +16,11 @@ export default function Disputes() {
       {/* Search Input Box - Responsive width */}
       <div className="mb-6 md:mb-8">
         <div className="relative w-full md:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#007782]" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#cb6f4d]" size={18} />
           <input
             type="text"
             placeholder="Search..."
-            className="w-full pl-10 pr-4 py-2.5 border border-[#007782] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1156be]/20 bg-white shadow-sm text-sm text-gray-800"
+            className="w-full pl-10 pr-4 py-2.5 border border-[#cb6f4d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1156be]/20 bg-white shadow-sm text-sm text-gray-800"
           />
         </div>
       </div>

@@ -173,7 +173,7 @@ export default function ProfileSetting() {
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 border border-[#007782] text-[#007782] rounded text-sm hover:bg-teal-50 transition-all"
+              className="px-3 py-1.5 border border-[#cb6f4d] text-[#cb6f4d] rounded text-sm hover:bg-teal-50 transition-all"
             >
               Change Photo
             </button>
@@ -202,7 +202,7 @@ export default function ProfileSetting() {
             onChange={handleInputChange}
             rows={4}
             placeholder="Tell us about yourself..."
-            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-teal-500 outline-none"
+            className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-[#cb6f4d] outline-none"
           />
         </div>
       </div>
@@ -255,7 +255,7 @@ export default function ProfileSetting() {
               onChange={handleInputChange}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-gray-200 peer-checked:bg-[#007782] rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
+            <div className="w-11 h-6 bg-gray-200 peer-checked:bg-[#cb6f4d] rounded-full peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all" />
           </label>
         </div>
       </div>
@@ -265,7 +265,7 @@ export default function ProfileSetting() {
         <button
           onClick={handleUpdate}
           disabled={isUpdating}
-          className="bg-[#007782] text-white px-10 py-2.5 rounded shadow hover:bg-[#00656f] disabled:opacity-50 transition-all font-medium"
+          className="bg-[#cb6f4d] text-white px-10 py-2.5 rounded shadow hover:bg-[#cb6f4d] disabled:opacity-50 transition-all font-medium"
         >
           {isUpdating ? "Saving..." : "Update profile"}
         </button>
