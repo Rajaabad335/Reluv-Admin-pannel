@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Sidebar from "../Sidebar/page";
 import { Menu, Bell, User, LogOut, Users, UserPlus, ChevronDown } from "lucide-react";
-import Link from "next/dist/client/link";
+import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { BACKEND_URL } from "@/constants";

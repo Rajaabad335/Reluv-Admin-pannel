@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Search, Trash2, ShieldOff, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { BACKEND_URL } from "@/constants";
 
-const API_BASE = "http://localhost:1337";
 const PAGE_SIZE = 10;
 
 // ─── Types ────────────────────────────────────────────────
@@ -101,7 +101,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/all-users`);
+      const res = await fetch(`${BACKEND_URL}/api/all-users`);
       if (!res.ok) return;
       const result = await res.json();
       setUsers(result?.data || []);
@@ -166,7 +166,7 @@ export default function UserManagement() {
     );
 
     try {
-      const res = await fetch(`${API_BASE}/api/users/${user.id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/users/${user.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blocked: willBlock }),
@@ -194,7 +194,7 @@ export default function UserManagement() {
     setUsers((prev) => prev.filter((u) => u.id !== user.id));
 
     try {
-      const res = await fetch(`${API_BASE}/api/users/${user.id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/users/${user.id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error();
