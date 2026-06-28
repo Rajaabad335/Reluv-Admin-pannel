@@ -50,13 +50,29 @@ export function logout() {
   localStorage.removeItem("jwt");
   localStorage.removeItem("user");
 }
-export async function loginWithGoogle(token: string) {
+export async function loginWithGoogle(code: string) {
   const res = await fetch(
-    `http://localhost:1337/api/auth/google/callback?access_token=${token}`,
+    `http://localhost:1337/api/auth/google/callback?code=${code}`,
+    { method: "GET" }
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Google callback error:", res.status, text);
+    throw new Error(text);
+  }
+  const data = await res.json();
+  console.log("Google callback response:", data);
+  if (!data.jwt || !data.user) throw new Error("Invalid response from server: " + JSON.stringify(data));
+  return data;
+}
+
+export async function loginWithLine(code: string) {
+  const res = await fetch(
+    `http://localhost:1337/api/auth/line/callback?code=${code}`,
     { method: "GET" }
   );
   if (!res.ok) throw new Error(await res.text());
-  return res.json(); 
+  return res.json();
 }
 export function sendOtp(email: string, username: string, password: string) {
   return apiRequest("/email-otp/send", {

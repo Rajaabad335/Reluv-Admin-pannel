@@ -23,6 +23,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [jwt, setJwt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Load from localStorage on app start
   useEffect(() => {
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setJwt(storedJwt);
       setUser(JSON.parse(storedUser));
     }
+    setLoading(false);
   }, []);
 
   const handleLogin = (jwt: string, user: User) => {
@@ -54,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, jwt, login: handleLogin, logout: handleLogout }}
+      value={{ user, jwt, loading, login: handleLogin, logout: handleLogout }}
     >
       {children}
     </AuthContext.Provider>
