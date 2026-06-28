@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "../context/AuthContext";
-import SignUpLogin from "../components/SignUpLogin";
+import AdminLogin from "../components/SignUpLogin";
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -9,7 +9,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading) return null;
 
   if (!user) {
-    return <SignUpLogin onClose={() => {}} />;
+    return <AdminLogin />;
   }
 
   return <>{children}</>;
