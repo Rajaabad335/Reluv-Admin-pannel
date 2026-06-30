@@ -134,8 +134,7 @@ export default function Orders() {
     try {
       const res = await fetch(`${BACKEND_URL}/api/orders/${urlKey}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        // Strapi v4/v5 requires the { data: {} } wrapper — missing it causes 400 ValidationError
+        headers: { "Content-Type": "application/json" ,  Authorization: `Bearer ${localStorage.getItem("jwt")}`,},
         body: JSON.stringify({ data: { [field]: value } }),
       });
       if (!res.ok) {
@@ -189,7 +188,7 @@ export default function Orders() {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
           <button
             onClick={() => setSelectedOrder(null)}
-            className="flex items-center gap-2 text-[#1156be] font-bold mb-6 hover:underline"
+            className="flex items-center gap-2 text-[#cb6f4d] font-bold mb-6 hover:underline"
           >
             <ArrowLeft size={20} /> Back to Orders
           </button>
@@ -273,7 +272,7 @@ function OrdersTable({
                 <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
                   {/* Order ID */}
                   <td
-                    className="px-6 py-5 text-sm font-bold text-[#1156be] cursor-pointer hover:underline"
+                    className="px-6 py-5 text-sm font-bold text-[#cb6f4d] cursor-pointer hover:underline"
                     onClick={() => onSelectOrder(order)}
                   >
                     #{order.id}
@@ -297,16 +296,16 @@ function OrdersTable({
 
                   {/* Buyer */}
                   <td className="px-6 py-5">
-                    <UserCell name={order.buyer?.name} avatar={order.buyer?.avatar} />
+                    {order.buyer?.name}
                   </td>
 
                   {/* Seller */}
                   <td className="px-6 py-5">
-                    <UserCell name={order.seller?.name} avatar={order.seller?.avatar} />
+                    {order.seller?.name}
                   </td>
 
                   {/* Amount */}
-                  <td className="px-6 py-5 text-sm font-black text-[#1a202c]">
+                  <td className="px-6 py-5 text-sm font-black text-[#cb6f4d]">
                     {order.amount}
                   </td>
 
@@ -321,7 +320,7 @@ function OrdersTable({
                   </td>
 
                   {/* Actions */}
-                  <td className="px-6 py-5 text-right">
+                  <td className="px-3 py-5 text-right">
                     <ActionButtons
                       onView={() => onSelectOrder(order)}
                       onDelete={() => onDelete(order)}
@@ -691,20 +690,26 @@ function PriceRow({ label, value, bold }: { label: string; value: string; bold?:
   );
 }
 
-function ActionButtons({ onView, onDelete }: { onView: () => void; onDelete: () => void }) {
+function ActionButtons({
+  onView,
+  onDelete,
+}: {
+  onView: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <div className="flex items-center border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
+    <div className="inline-flex items-center border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
       <button
         onClick={onView}
-        className="px-3 py-1.5 hover:bg-gray-50 transition-colors text-[#1156be] text-sm font-bold border-r border-gray-200"
+        className="px-3 py-1.5 hover:bg-gray-50 transition-colors text-[#cb6f4d] text-sm font-bold border-r border-gray-200"
       >
         View
       </button>
       <button
         onClick={onDelete}
-        className="px-2 py-1.5 text-red-400 hover:bg-red-50 transition-colors"
+        className="px-2 py-1.5 text-[#cb6f4d] hover:bg-red-50 transition-colors"
       >
-        <Trash2 size={14} />
+        <Trash2 size={16} />
       </button>
     </div>
   );
