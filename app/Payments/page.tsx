@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Search, Eye } from "lucide-react";
+import { BACKEND_URL } from "@/constants";
 
 const API_BASE_URL = BACKEND_URL || "http://localhost:1337";
 
