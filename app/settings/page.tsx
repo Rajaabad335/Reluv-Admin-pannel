@@ -339,7 +339,7 @@ export default function Settings({ onCommissionChange }: SettingsProps) {
         </div>
 
         {/* Auto payout */}
-        <ToggleField
+        {/* <ToggleField
           label="Auto payout"
           hint="Automatically release payouts once the threshold is met"
           checked={form.autoPayoutEnabled}
@@ -377,7 +377,7 @@ export default function Settings({ onCommissionChange }: SettingsProps) {
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Maintenance mode */}
         <ToggleField
