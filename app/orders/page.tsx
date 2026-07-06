@@ -24,7 +24,7 @@ interface ApiOrder {
   documentId?: string;     // Strapi v5 uses documentId for mutations
   buyer: { name: string; avatar?: string };
   seller: { name: string; avatar?: string };
-  amount: string;          // pre-formatted, e.g. "€461.25"
+  amount: string;          // pre-formatted, e.g. "TBH461.25"
   item: string;
   itemImage?: string;
   role: string;
@@ -134,7 +134,7 @@ export default function Orders() {
     try {
       const res = await fetch(`${BACKEND_URL}/api/orders/${urlKey}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" ,  Authorization: `Bearer ${localStorage.getItem("jwt")}`,},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: { [field]: value } }),
       });
       if (!res.ok) {

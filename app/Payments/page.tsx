@@ -54,13 +54,10 @@ export default function Payments({
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
-    const token = getToken();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/orders?populate[buyer]=true&pagination[pageSize]=100`,
-        { headers }
+        { headers: { "Content-Type": "application/json" } }
       );
       if (!res.ok) throw new Error("Failed");
       const json = await res.json();
@@ -109,9 +106,9 @@ export default function Payments({
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Total collected", value: `${stats.total.toLocaleString()} THB` },
-          { label: "Commission earned", value: `${stats.commission.toFixed(0)} THB`, accent: true },
-          { label: "Pending volume", value: `${stats.pending.toLocaleString()} THB` },
+          { label: "Total collected", value: `${stats.total.toLocaleString()} TBH` },
+          { label: "Commission earned", value: `${stats.commission.toFixed(0)} TBH`, accent: true },
+          { label: "Pending volume", value: `${stats.pending.toLocaleString()} TBH` },
           { label: "Transactions", value: stats.count.toString() },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-100 p-4">
@@ -193,11 +190,11 @@ export default function Payments({
                     <td className="px-5 py-4 text-sm font-semibold text-[#cb6f4d]">{p.orderRef}</td>
                     <td className="px-5 py-4 text-sm text-gray-600">{p.buyer}</td>
                     <td className="px-5 py-4 text-sm font-semibold text-[#2d3748]">
-                      {p.amount.toLocaleString()} THB
+                      {p.amount.toLocaleString()} TBH
                     </td>
                     <td className="px-5 py-4">
                       <span className="inline-flex items-center gap-1 bg-[#f5e6df] text-[#a85839] text-xs font-medium rounded-full px-3 py-1">
-                        {commission(p.amount)} THB
+                        {commission(p.amount)} TBH
                       </span>
                     </td>
                     <td className="px-5 py-4 text-center">

@@ -44,13 +44,10 @@ export default function Payouts({
 
   const fetchPayouts = useCallback(async () => {
     setLoading(true);
-    const token = getToken();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
       const res = await fetch(
         `${API_BASE_URL}/api/payouts?populate[seller]=true&pagination[pageSize]=100`,
-        { headers }
+        { headers: { "Content-Type": "application/json" } }
       );
       if (!res.ok) throw new Error("Failed");
       const json = await res.json();
@@ -85,13 +82,10 @@ export default function Payouts({
 
   const processPayout = async (id: number) => {
     setProcessingId(id);
-    const token = getToken();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     try {
       const res = await fetch(`${API_BASE_URL}/api/payouts/${id}`, {
         method: "PUT",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: { status: "success" } }),
       });
       if (!res.ok) throw new Error();
@@ -203,15 +197,15 @@ export default function Payouts({
                       <td className="px-5 py-4 text-sm font-semibold text-gray-500">#{p.id}</td>
                       <td className="px-5 py-4 text-sm font-semibold text-[#2d3748]">{p.seller}</td>
                       <td className="px-5 py-4 text-sm text-gray-600">
-                        {p.gross.toLocaleString()} THB
+                        {p.gross.toLocaleString()} TBH
                       </td>
                       <td className="px-5 py-4">
                         <span className="inline-flex items-center bg-[#f5e6df] text-[#a85839] text-xs font-medium rounded-full px-3 py-1">
-                          {commAmt} THB
+                          {commAmt} TBH
                         </span>
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-[#cb6f4d]">
-                        {net(p.gross)} THB
+                        {net(p.gross)} TBH
                       </td>
                       <td className="px-5 py-4 text-center">
                         <span
