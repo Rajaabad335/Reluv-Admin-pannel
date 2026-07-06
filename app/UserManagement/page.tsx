@@ -1,18 +1,24 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { Search, Trash2, ShieldOff, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search, Trash2, ShieldOff, ShieldCheck, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { BACKEND_URL } from "@/constants";
 
 const PAGE_SIZE = 10;
 
 // ─── Types ────────────────────────────────────────────────
+// The /api/all-users endpoint returns the full user record (products,
+// followers, following, avatar, googlePicture, received_reviews, etc).
+// We keep the object loosely typed so we can pass it straight through
+// to the profile page without re-fetching anything.
 interface User {
   id: number;
   username: string;
   email: string;
   accountType: string;
   blocked: boolean;
+  [key: string]: any;
 }
 
 // ─── Confirmation Modal ───────────────────────────────────
@@ -75,6 +81,7 @@ function Toast({ message, type }: { message: string; type: "success" | "error" }
 
 // ─── Main Component ───────────────────────────────────────
 export default function UserManagement() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState("All Users");
   const [searchQuery, setSearchQuery] = useState("");
@@ -206,6 +213,20 @@ export default function UserManagement() {
     }
   };
 
+  // ── View profile ──
+  // We already have the full user record (products, followers, following,
+  // avatar, googlePicture, received_reviews, etc.) in `users` state, so we
+  // just hand it off via sessionStorage instead of re-fetching on the
+  // profile page. ProfilePage reads and clears this key on mount.
+  const handleViewProfile = (user: User) => {
+    try {
+      sessionStorage.setItem(`member-cache:${user.id}`, JSON.stringify(user));
+    } catch (err) {
+      console.error("Failed to cache user for profile view:", err);
+    }
+    router.push(`/member/${user.id}`);
+  };
+
   // ── Loading ──
   if (loading) {
     return (
@@ -268,7 +289,7 @@ export default function UserManagement() {
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[750px]">
+          <table className="w-full text-left min-w-187.5">
             <thead className="bg-[#fcfdfe] border-b border-gray-100">
               <tr className="text-gray-500 text-xs uppercase tracking-wide">
                 <th className="px-6 py-4 font-semibold">ID</th>
@@ -300,6 +321,15 @@ export default function UserManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleViewProfile(user)}
+                          title="View user profile"
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#cb6f4d] text-[#cb6f4d] hover:bg-[#f5e6df] transition-colors cursor-pointer"
+                        >
+                          <Eye size={13} />
+                          View
+                        </button>
+
                         {/* Block / Unban */}
                         <button
                           onClick={() => openModal("block", user)}
