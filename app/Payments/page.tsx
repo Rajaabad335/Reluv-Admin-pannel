@@ -30,7 +30,7 @@ function getToken() {
 }
 
 export default function Payments({
-  commissionRate = 10,
+  commissionRate: initialCommissionRate = 10,
 }: {
   commissionRate?: number;
 }) {
@@ -39,6 +39,7 @@ export default function Payments({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
+  const [commissionRate, setCommissionRate] = useState(initialCommissionRate);
 
   const stats = React.useMemo(() => {
     const paid = payments.filter((p) => p.status === "paid");
@@ -51,6 +52,27 @@ export default function Payments({
       count: payments.length,
     };
   }, [payments, commissionRate]);
+
+  const fetchCommissionRate = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/marketplace-settings?status=published`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!res.ok) throw new Error("Failed");
+      const json = await res.json();
+      const entry = Array.isArray(json.data) ? json.data[0] : json.data;
+      const d = entry?.attributes ?? entry ?? {};
+      const rate = parseFloat(d.commissionRate ?? initialCommissionRate);
+      if (!Number.isNaN(rate)) setCommissionRate(rate);
+    } catch {
+      setCommissionRate(initialCommissionRate);
+    }
+  }, [API_BASE_URL, initialCommissionRate]);
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
@@ -85,7 +107,10 @@ export default function Payments({
     }
   }, []);
 
-  useEffect(() => { fetchPayments(); }, [fetchPayments]);
+  useEffect(() => {
+    fetchCommissionRate();
+    fetchPayments();
+  }, [fetchCommissionRate, fetchPayments]);
 
   useEffect(() => {
     const q = search.toLowerCase();
