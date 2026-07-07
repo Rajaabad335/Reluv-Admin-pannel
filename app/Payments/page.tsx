@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, Eye } from "lucide-react";
+import { Search, Download, Loader2 } from "lucide-react";
 import { BACKEND_URL } from "@/constants";
+import jsPDF from "jspdf";
 
 const API_BASE_URL = BACKEND_URL || "http://localhost:1337";
 
@@ -40,6 +41,7 @@ export default function Payments({
   const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [commissionRate, setCommissionRate] = useState(initialCommissionRate);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const stats = React.useMemo(() => {
     const paid = payments.filter((p) => p.status === "paid");
@@ -125,6 +127,109 @@ export default function Payments({
 
   const commission = (amount: number) =>
     ((amount * commissionRate) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ── Slip generation ────────────────────────────────────────────────────────
+  const handleDownloadSlip = async (payment: Payment) => {
+    setDownloadingId(payment.id);
+    try {
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const brand = "#cb6f4d";
+      const dark = "#2d3748";
+      const gray = "#8a94a3";
+
+      const commissionAmt = (payment.amount * commissionRate) / 100;
+      const netAmt = payment.amount - commissionAmt;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+
+      // Header band
+      doc.setFillColor(brand);
+      doc.rect(0, 0, pageWidth, 90, "F");
+      doc.setTextColor("#ffffff");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("Reluv", 48, 45);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Payment Slip", 48, 64);
+
+      doc.setFontSize(9);
+      doc.text(`Generated: ${dateStr} · ${timeStr}`, pageWidth - 48, 45, { align: "right" });
+      doc.text(`Ref: ${payment.orderRef}`, pageWidth - 48, 60, { align: "right" });
+
+      let y = 130;
+
+      const row = (label: string, value: string, opts?: { bold?: boolean; accent?: boolean }) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(gray);
+        doc.text(label, 48, y);
+
+        doc.setFont("helvetica", opts?.bold ? "bold" : "normal");
+        doc.setFontSize(opts?.bold ? 12 : 11);
+        doc.setTextColor(opts?.accent ? brand : dark);
+        doc.text(value, pageWidth - 48, y, { align: "right" });
+        y += 28;
+      };
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(dark);
+      doc.text("Order Details", 48, y);
+      y += 12;
+      doc.setDrawColor("#ebf1f7");
+      doc.line(48, y, pageWidth - 48, y);
+      y += 26;
+
+      row("Order Reference", payment.orderRef, { bold: true });
+      row("Buyer", payment.buyer);
+      row("Payment Status", payment.status.toUpperCase());
+
+      y += 8;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(dark);
+      doc.text("Amount Breakdown", 48, y);
+      y += 12;
+      doc.line(48, y, pageWidth - 48, y);
+      y += 26;
+
+      row("Order Amount", `${payment.amount.toLocaleString()} THB`);
+      row(`Commission (${commissionRate}%)`, `-${commissionAmt.toFixed(2)} THB`, { accent: true });
+
+      doc.setDrawColor("#e2e8f0");
+      doc.line(48, y - 8, pageWidth - 48, y - 8);
+      y += 8;
+
+      row("Net Payout", `${netAmt.toFixed(2)} THB`, { bold: true });
+
+      // Footer
+      const footerY = doc.internal.pageSize.getHeight() - 60;
+      doc.setDrawColor("#ebf1f7");
+      doc.line(48, footerY, pageWidth - 48, footerY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(gray);
+      doc.text(
+        "This slip is a system-generated summary and does not constitute a tax invoice.",
+        48,
+        footerY + 20
+      );
+      doc.text("Reluv Marketplace", 48, footerY + 34);
+
+      doc.save(`slip-${payment.orderRef}.pdf`);
+    } catch (err) {
+      console.error("Failed to generate slip:", err);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="p-4 md:p-8 bg-[#f8fafd] min-h-screen font-sans">
@@ -230,8 +335,20 @@ export default function Payments({
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-[#cb6f4d] hover:bg-[#f5e6df] transition-colors">
-                        <Eye size={13} /> View
+                      <button
+                        onClick={() => handleDownloadSlip(p)}
+                        disabled={downloadingId === p.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-[#cb6f4d] hover:bg-[#f5e6df] transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-w-[120px] justify-center"
+                      >
+                        {downloadingId === p.id ? (
+                          <>
+                            <Loader2 size={13} className="animate-spin" /> Generating…
+                          </>
+                        ) : (
+                          <>
+                            <Download size={13} /> Download Slip
+                          </>
+                        )}
                       </button>
                     </td>
                   </tr>

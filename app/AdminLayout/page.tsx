@@ -5,7 +5,7 @@ import Sidebar from "../Sidebar/page";
 import { Menu, Bell, User, LogOut, Users, UserPlus, ChevronDown, AlertTriangle, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { BACKEND_URL } from "@/constants";
 
 // ─── Notification Bell Dropdown ────────────────────────────────────────────────
@@ -279,6 +279,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const profileRef = useRef<HTMLDivElement>(null);
   const bellRef    = useRef<HTMLDivElement>(null);
   const router     = useRouter();
+  const pathname   = usePathname();
+
+  const pageTitle = React.useMemo(() => {
+    const routeMap: Record<string, string> = {
+      "/": "Admin Dashboard",
+      "/UserManagement": "Users Management",
+      "/orders": "Orders Details",
+      "/Payments": "Payments",
+      "/payouts": "Payouts",
+      "/Disputes": "Active Disputes",
+      "/settings": "System Settings",
+    };
+
+    return routeMap[pathname] || "Admin Dashboard";
+  }, [pathname]);
 
   // Fetch unread count for the badge on the bell
   useEffect(() => {
@@ -339,7 +354,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Menu size={24} />
             </button>
             <h2 className="text-lg font-bold text-[#cb6f4d] hidden sm:block">
-              Admin Dashboard
+              {pageTitle}
             </h2>
           </div>
 

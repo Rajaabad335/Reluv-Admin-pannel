@@ -10,13 +10,13 @@ import {
 } from "lucide-react";
 
 const menu = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Users", path: "/UserManagement", icon: Users },
-  { name: "Orders", path: "/orders", icon: ShoppingCart },
+  { name: "Admin Dashboard", path: "/", icon: LayoutDashboard },
+  { name: "Users Management", path: "/UserManagement", icon: Users },
+  { name: "Orders Details", path: "/orders", icon: ShoppingCart },
   { name: "Payments", path: "/Payments", icon: CreditCard },
   { name: "Payouts", path: "/payouts", icon: Banknote },
-  { name: "Disputes", path: "/Disputes", icon: Scale },
-  { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Active Disputes", path: "/Disputes", icon: Scale },
+  { name: "System Settings", path: "/settings", icon: Settings },
 ];
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
