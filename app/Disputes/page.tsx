@@ -665,7 +665,7 @@ export default function Disputes() {
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-800">
                       {dispute.refundAmount != null
-                        ? `TBH${dispute.refundAmount.toFixed(2)}`
+                        ? `thb${dispute.refundAmount.toFixed(2)}`
                         : "—"}
                     </td>
                     <td className="px-6 py-4 text-center">

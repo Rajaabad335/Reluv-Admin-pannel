@@ -115,7 +115,7 @@ const ProfilePage = () => {
       brand: entry.brand ?? "",
       size: entry.size ?? "",
       condition: entry.condition ?? "",
-      price: entry.price ? `TBH ${entry.price}` : "N/A",
+      price: entry.price ? `thb ${entry.price}` : "N/A",
       imageUrl: getFirstImageUrl(entry.images),
       description: entry.description ?? "",
     };

@@ -24,7 +24,7 @@ interface ApiOrder {
   documentId?: string;     // Strapi v5 uses documentId for mutations
   buyer: { name: string; avatar?: string };
   seller: { name: string; avatar?: string };
-  amount: string;          // pre-formatted, e.g. "TBH461.25"
+  amount: string;          // pre-formatted, e.g. "thb461.25"
   item: string;
   itemImage?: string;
   role: string;

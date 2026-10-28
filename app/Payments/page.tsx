@@ -236,9 +236,9 @@ export default function Payments({
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Total collected", value: `${stats.total.toLocaleString()} TBH` },
-          { label: "Commission earned", value: `${stats.commission.toFixed(0)} TBH`, accent: true },
-          { label: "Pending volume", value: `${stats.pending.toLocaleString()} TBH` },
+          { label: "Total collected", value: `${stats.total.toLocaleString()} thb` },
+          { label: "Commission earned", value: `${stats.commission.toFixed(0)} thb`, accent: true },
+          { label: "Pending volume", value: `${stats.pending.toLocaleString()} thb` },
           { label: "Transactions", value: stats.count.toString() },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-100 p-4">
@@ -320,11 +320,11 @@ export default function Payments({
                     <td className="px-5 py-4 text-sm font-semibold text-[#cb6f4d]">{p.orderRef}</td>
                     <td className="px-5 py-4 text-sm text-gray-600">{p.buyer}</td>
                     <td className="px-5 py-4 text-sm font-semibold text-[#2d3748]">
-                      {p.amount.toLocaleString()} TBH
+                      {p.amount.toLocaleString()} thb
                     </td>
                     <td className="px-5 py-4">
                       <span className="inline-flex items-center gap-1 bg-[#f5e6df] text-[#a85839] text-xs font-medium rounded-full px-3 py-1">
-                        {commission(p.amount)} TBH
+                        {commission(p.amount)} thb
                       </span>
                     </td>
                     <td className="px-5 py-4 text-center">

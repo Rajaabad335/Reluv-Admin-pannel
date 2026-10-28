@@ -222,15 +222,15 @@ export default function Payouts({
                       <td className="px-5 py-4 text-sm font-semibold text-gray-500">#{p.id}</td>
                       <td className="px-5 py-4 text-sm font-semibold text-[#2d3748]">{p.seller}</td>
                       <td className="px-5 py-4 text-sm text-gray-600">
-                        {p.gross.toLocaleString()} TBH
+                        {p.gross.toLocaleString()} thb
                       </td>
                       <td className="px-5 py-4">
                         <span className="inline-flex items-center bg-[#f5e6df] text-[#a85839] text-xs font-medium rounded-full px-3 py-1">
-                          {commAmt} TBH
+                          {commAmt} thb
                         </span>
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-[#cb6f4d]">
-                        {net(p.gross)} TBH
+                        {net(p.gross)} thb
                       </td>
                       <td className="px-5 py-4 text-center">
                         <span

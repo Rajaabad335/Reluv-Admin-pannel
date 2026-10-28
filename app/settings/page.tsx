@@ -29,7 +29,7 @@ function getToken() {
 const DEFAULT_FORM: MarketplaceSettings = {
   commissionRate: 10,
   escrowDays: 7,
-  currency: "TBH",
+  currency: "thb",
   autoPayoutEnabled: false,
   autoPayoutThresholdAmount: 0,
   maintenanceMode: false,
@@ -76,7 +76,7 @@ export default function Settings({ onCommissionChange }: SettingsProps) {
         setForm({
           commissionRate: parseFloat(d.commissionRate ?? 10),
           escrowDays: parseInt(d.escrowDays ?? 7),
-          currency: "TBH",
+          currency: "thb",
           autoPayoutEnabled: Boolean(d.autoPayoutEnabled ?? false),
           autoPayoutThresholdAmount: parseFloat(
             d.autoPayoutThresholdAmount ?? 0
@@ -107,7 +107,7 @@ export default function Settings({ onCommissionChange }: SettingsProps) {
     const payload: Record<string, any> = {
       commissionRate: form.commissionRate,
       escrowDays: form.escrowDays,
-      currency: "TBH",
+      currency: "thb",
       autoPayoutEnabled: form.autoPayoutEnabled,
       autoPayoutThresholdAmount: form.autoPayoutThresholdAmount,
       maintenanceMode: form.maintenanceMode,
@@ -323,7 +323,7 @@ export default function Settings({ onCommissionChange }: SettingsProps) {
           ]}
         />
 
-        {/* Currency: fixed to TBH, no dropdown */}
+        {/* Currency: fixed to thb, no dropdown */}
         <div className="flex flex-col md:flex-row md:items-start p-5 gap-2 md:gap-0 border-b border-gray-100">
           <div className="md:w-56 flex-shrink-0">
             <p className="text-sm font-semibold text-[#4a5568]">Currency</p>
@@ -333,7 +333,7 @@ export default function Settings({ onCommissionChange }: SettingsProps) {
           </div>
           <div className="md:flex-1">
             <div className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-600">
-              TBH — Thai Baht
+              thb — Thai Baht
             </div>
           </div>
         </div>
