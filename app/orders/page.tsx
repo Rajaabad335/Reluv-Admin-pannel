@@ -51,6 +51,44 @@ interface ApiOrder {
 
 const ORDER_STATUS_STEPS = ["Placed", "In Progress", "Shipped", "Delivered"];
 
+const normalizeOrderStatus = (value?: string): string => {
+  switch ((value || "").trim().toLowerCase().replace(/_/g, " ")) {
+    case "placed":
+    case "pending":
+      return "Placed";
+    case "confirmed":
+    case "processing":
+    case "in progress":
+      return "In Progress";
+    case "shipped":
+      return "Shipped";
+    case "delivered":
+    case "completed":
+      return "Delivered";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return value || "N/A";
+  }
+};
+
+const normalizeOrderStatusValue = (value?: string): string => {
+  switch (normalizeOrderStatus(value)) {
+    case "Placed":
+      return "placed";
+    case "In Progress":
+      return "in progress";
+    case "Shipped":
+      return "shipped";
+    case "Delivered":
+      return "delivered";
+    case "Cancelled":
+      return "cancelled";
+    default:
+      return value?.toLowerCase() || "placed";
+  }
+};
+
 // Maps the API `progressStatus` string → step index
 const stepIndex = (progressStatus: string): number => {
   const s = progressStatus.toLowerCase();
@@ -106,7 +144,17 @@ export default function Orders() {
       const res = await fetch(`${BACKEND_URL}/api/orders/get-all-orders`);
       if (!res.ok) throw new Error("Failed");
       const json = await res.json();
-      setOrders(Array.isArray(json?.data?.orders) ? json.data.orders : []);
+      const fetchedOrders: ApiOrder[] = Array.isArray(json?.data?.orders)
+        ? json.data.orders
+        : [];
+      setOrders(
+        fetchedOrders.map((order) => ({
+          ...order,
+          progressStatus: normalizeOrderStatus(
+            order.orderStatus || order.progressStatus
+          ),
+        }))
+      );
     } catch {
       console.error("Failed to load orders");
     } finally {
@@ -142,7 +190,10 @@ export default function Orders() {
         console.error("Status update failed:", err);
         return;
       }
-      const patch = { [field]: value, [displayField]: value };
+      const patch = {
+        [field]: value,
+        [displayField]: field === "orderStatus" ? normalizeOrderStatus(value) : value,
+      };
       setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...patch } : o)));
       setSelectedOrder((prev) => (prev?.id === order.id ? { ...prev, ...patch } : prev));
     } catch {
@@ -348,10 +399,12 @@ function OrderDetailsView({
   onDelete: (order: ApiOrder) => void;
 }) {
   const payBadge = getBadge(order.status);
-  const progBadge = getBadge(order.progressStatus);
-  const isCancelled = order.progressStatus?.toLowerCase().includes("cancel") ||
-    order.orderStatus?.toLowerCase() === "cancelled";
-  const currentStep = isCancelled ? -1 : stepIndex(order.progressStatus);
+  const progressStatus = normalizeOrderStatus(
+    order.orderStatus || order.progressStatus
+  );
+  const progBadge = getBadge(progressStatus);
+  const isCancelled = progressStatus === "Cancelled";
+  const currentStep = isCancelled ? -1 : stepIndex(progressStatus);
 
   return (
     <div className="space-y-6">
@@ -385,7 +438,9 @@ function OrderDetailsView({
           {/* Order status dropdown */}
           <StatusDropdown
             label="Progress"
-            value={order.orderStatus ?? order.progressStatus}
+            value={normalizeOrderStatusValue(
+              order.orderStatus ?? order.progressStatus
+            )}
             options={["placed", "in progress", "shipped", "delivered", "cancelled"]}
             badgeClass={`${progBadge.bg} ${progBadge.text}`}
             onChange={(v) => onStatusUpdate(order, "orderStatus", v)}

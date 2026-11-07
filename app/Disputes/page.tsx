@@ -100,9 +100,18 @@ const REASON_LABELS: Record<string, string> = {
 
 const BAN_RECOMMEND_THRESHOLD = 3;
 
+interface DisputeActionPayload {
+  disputeId: number | string;
+  action: "REFUND_BUYER" | "RELEASE_TO_SELLER" | "REQUEST_MORE_INFO";
+  refundAmount?: number;
+  resolution?: string;
+  adminNotes?: string;
+}
+
 export default function DisputesPage() {
   const [disputes, setDisputes] = useState<DisputeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
@@ -127,105 +136,20 @@ export default function DisputesPage() {
   // Fetch disputes
   const fetchDisputes = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/disputes-full`, {
         headers: { "Content-Type": "application/json" },
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.ok && Array.isArray(json.data) && json.data.length > 0) {
-          setDisputes(json.data);
-          return;
-        }
+      if (!res.ok) throw new Error("Could not load disputes.");
+      const json = await res.json();
+      if (!json.ok || !Array.isArray(json.data)) {
+        throw new Error("Dispute records are unavailable.");
       }
-      throw new Error("Empty or failed to load");
-    } catch {
-      // Fallback realistic demo dataset if no dispute in DB yet
-      setDisputes([
-        {
-          id: 1,
-          documentId: "dsp_doc_001",
-          disputeId: "DSP-0001",
-          orderId: 13,
-          orderNumber: "ORD-00013",
-          buyer: {
-            id: 5,
-            username: "raja-abad",
-            email: "rajaabad335@gmail.com",
-            blocked: false,
-          },
-          seller: {
-            id: 16,
-            username: "gillmana-arther",
-            email: "gillmana641@gmail.com",
-            bankAccountLast4: "8821",
-            blocked: false,
-          },
-          product: {
-            id: 22,
-            title: "Skechers Arch Fit Beige Knit Thong Sandals",
-            image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=300",
-            price: 1595,
-          },
-          orderAmount: 1595,
-          commissionAmount: 159.5,
-          sellerAmount: 1435.5,
-          reason: "DAMAGED_PRODUCT",
-          description:
-            "The sandal strap arrived snapped upon opening package. Seller packaging was inadequate.",
-          evidence: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600",
-          status: "OPEN",
-          resolution: null,
-          adminNotes: null,
-          refundAmount: 1595,
-          payoutHoldStatus: "ON_HOLD",
-          createdDate: new Date(Date.now() - 3600000 * 20).toISOString(),
-          deliveryDate: new Date(Date.now() - 3600000 * 24).toISOString(),
-          disputeDeadline: new Date(Date.now() + 3600000 * 24).toISOString(),
-          paymentDate: new Date(Date.now() - 3600000 * 48).toISOString(),
-        },
-        {
-          id: 2,
-          documentId: "dsp_doc_002",
-          disputeId: "DSP-0002",
-          orderId: 11,
-          orderNumber: "ORD-00011",
-          buyer: {
-            id: 2,
-            username: "shahzaib-asim",
-            email: "shahzaibasimbutt1090@gmail.com",
-            blocked: false,
-          },
-          seller: {
-            id: 3,
-            username: "STARTEL 6729",
-            email: "hajudata@gmail.com",
-            bankAccountLast4: "8821",
-            blocked: false,
-          },
-          product: {
-            id: 20,
-            title: "Gucci GG Supreme Mini Shoulder Bag with Gold Chain Strap",
-            image: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300",
-            price: 1369.25,
-          },
-          orderAmount: 1369.25,
-          commissionAmount: 136.93,
-          sellerAmount: 1232.32,
-          reason: "WRONG_ITEM",
-          description: "Received a black leather tote instead of the beige GG Supreme shoulder bag.",
-          evidence: null,
-          status: "UNDER_REVIEW",
-          resolution: "Admin reviewing courier scan slips.",
-          adminNotes: "Contacted seller for shipping invoice verification.",
-          refundAmount: 1369.25,
-          payoutHoldStatus: "ON_HOLD",
-          createdDate: new Date(Date.now() - 3600000 * 30).toISOString(),
-          deliveryDate: new Date(Date.now() - 3600000 * 36).toISOString(),
-          disputeDeadline: new Date(Date.now() + 3600000 * 12).toISOString(),
-          paymentDate: new Date(Date.now() - 3600000 * 60).toISOString(),
-        },
-      ]);
+      setDisputes(json.data);
+    } catch (err) {
+      setDisputes([]);
+      setLoadError(err instanceof Error ? err.message : "Could not load disputes.");
     } finally {
       setLoading(false);
     }
@@ -242,7 +166,7 @@ export default function DisputesPage() {
     setActionFeedback(null);
 
     try {
-      const payload: any = {
+      const payload: DisputeActionPayload = {
         disputeId: selectedDispute.id || selectedDispute.documentId,
         action: actionType,
       };
@@ -294,8 +218,8 @@ export default function DisputesPage() {
         setSelectedDispute({
           ...selectedDispute,
           status: json.status || selectedDispute.status,
-          resolution: payload.resolution,
-          adminNotes: payload.adminNotes,
+          resolution: payload.resolution ?? selectedDispute.resolution,
+          adminNotes: payload.adminNotes ?? selectedDispute.adminNotes,
           payoutHoldStatus:
             actionType === "RELEASE_TO_SELLER"
               ? "RELEASED"
@@ -311,10 +235,13 @@ export default function DisputesPage() {
         setCustomRefundAmount("");
         setActionFeedback(null);
       }, 1800);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setActionFeedback({
         type: "error",
-        message: err.message || "Failed to execute dispute action.",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Failed to execute dispute action.",
       });
     } finally {
       setActionLoading(false);
@@ -396,6 +323,15 @@ export default function DisputesPage() {
           <span>Refresh Disputes</span>
         </button>
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+        >
+          {loadError}
+        </div>
+      )}
 
       {/* ── 4. DISPUTE MANAGEMENT PAGE & FILTERS (Requirement 4) ──────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">

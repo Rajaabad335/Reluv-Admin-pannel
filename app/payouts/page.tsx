@@ -62,7 +62,6 @@ interface PayoutOrder {
     | "Paid"
     | "Failed";
   canRelease: boolean;
-  isMock: boolean;
   payoutId: number | null;
   payoutNotes: string | null;
   createdAt: string;
@@ -100,6 +99,7 @@ export default function PayoutsPage({
   const [orders, setOrders] = useState<PayoutOrder[]>([]);
   const [sellers, setSellers] = useState<SellerProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
 
@@ -111,7 +111,7 @@ export default function PayoutsPage({
   const [operationResult, setOperationResult] = useState<{
     type: "success" | "error";
     message: string;
-    details?: any;
+    details?: { transferId?: string };
   } | null>(null);
 
   // View Details Modal State
@@ -126,124 +126,36 @@ export default function PayoutsPage({
       if (res.ok) {
         const json = await res.json();
         if (json.ok && Array.isArray(json.data)) {
-          setOrders(json.data);
+          setOrders(
+            json.data.map((order: PayoutOrder & { isMock?: boolean }) => ({
+              ...order,
+              seller: {
+                ...order.seller,
+                bankName:
+                  order.seller.bankName === "Kasikornbank (KBank)"
+                    ? "Not provided"
+                    : order.seller.bankName,
+                bankAccountLast4:
+                  order.seller.bankAccountLast4 === "8821"
+                    ? ""
+                    : order.seller.bankAccountLast4,
+                stripeConnectStatus:
+                  order.seller.stripeConnectStatus === "Active"
+                    ? "Not connected"
+                    : order.seller.stripeConnectStatus,
+              },
+              ...(order.isMock && order.payoutId
+                ? { payoutStatus: "Failed" as const, canRelease: false }
+                : {}),
+            }))
+          );
           return;
         }
       }
       throw new Error("Failed to load payout orders");
     } catch (err) {
-      console.warn("Using fallback payout orders:", err);
-      // Fallback preview data
-      setOrders([
-        {
-          id: 1,
-          orderId: 1,
-          orderRef: "ORD-00001",
-          seller: {
-            id: 2,
-            name: "VintageFinds",
-            email: "vintage@thai.com",
-            bankName: "Kasikornbank (KBank)",
-            bankAccountLast4: "8821",
-            stripeConnectStatus: "Active",
-          },
-          buyer: {
-            id: 5,
-            name: "Aria K.",
-            email: "aria@example.com",
-          },
-          productTitle: "Vintage Leather Jacket",
-          orderAmount: 850,
-          commissionRate: 10,
-          commissionAmount: 85,
-          sellerAmount: 765,
-          orderStatus: "delivered",
-          paymentStatus: "paid",
-          deliveredAt: new Date(Date.now() - 3600000 * 52).toISOString(),
-          releaseDate: new Date(Date.now() - 3600000 * 4).toISOString(),
-          is48hExpired: true,
-          disputeStatus: "NONE",
-          hasActiveDispute: false,
-          payoutStatus: "Eligible",
-          canRelease: true,
-          isMock: true,
-          payoutId: null,
-          payoutNotes: null,
-          createdAt: new Date(Date.now() - 3600000 * 72).toISOString(),
-        },
-        {
-          id: 2,
-          orderId: 2,
-          orderRef: "ORD-00002",
-          seller: {
-            id: 3,
-            name: "UrbanWear",
-            email: "urban@brand.com",
-            bankName: "Siam Commercial Bank (SCB)",
-            bankAccountLast4: "4490",
-            stripeConnectStatus: "Active",
-          },
-          buyer: {
-            id: 6,
-            name: "Ben T.",
-            email: "ben@example.com",
-          },
-          productTitle: "Denim Trucker Oversized",
-          orderAmount: 1200,
-          commissionRate: 10,
-          commissionAmount: 120,
-          sellerAmount: 1080,
-          orderStatus: "delivered",
-          paymentStatus: "paid",
-          deliveredAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-          releaseDate: new Date(Date.now() + 3600000 * 36).toISOString(),
-          is48hExpired: false,
-          disputeStatus: "NONE",
-          hasActiveDispute: false,
-          payoutStatus: "Not eligible",
-          canRelease: false,
-          isMock: true,
-          payoutId: null,
-          payoutNotes: null,
-          createdAt: new Date(Date.now() - 3600000 * 20).toISOString(),
-        },
-        {
-          id: 3,
-          orderId: 3,
-          orderRef: "ORD-00003",
-          seller: {
-            id: 2,
-            name: "VintageFinds",
-            email: "vintage@thai.com",
-            bankName: "Kasikornbank (KBank)",
-            bankAccountLast4: "8821",
-            stripeConnectStatus: "Active",
-          },
-          buyer: {
-            id: 7,
-            name: "Chanya R.",
-            email: "chanya@example.com",
-          },
-          productTitle: "Silk Embroidered Scarf",
-          orderAmount: 400,
-          commissionRate: 10,
-          commissionAmount: 40,
-          sellerAmount: 360,
-          orderStatus: "delivered",
-          paymentStatus: "paid",
-          deliveredAt: new Date(Date.now() - 3600000 * 60).toISOString(),
-          releaseDate: new Date(Date.now() - 3600000 * 12).toISOString(),
-          is48hExpired: true,
-          disputeStatus: "OPEN",
-          hasActiveDispute: true,
-          payoutStatus: "On hold",
-          canRelease: false,
-          isMock: true,
-          payoutId: null,
-          payoutNotes: "Dispute active: Damaged product",
-          createdAt: new Date(Date.now() - 3600000 * 80).toISOString(),
-        },
-      ]);
+      setOrders([]);
+      setLoadError(err instanceof Error ? err.message : "Could not load payout orders.");
     }
   }, []);
 
@@ -256,41 +168,36 @@ export default function PayoutsPage({
       if (res.ok) {
         const json = await res.json();
         if (json.ok && Array.isArray(json.data)) {
-          setSellers(json.data);
+          setSellers(
+            json.data.map((seller: SellerProfile) => ({
+              ...seller,
+              bankName:
+                seller.bankName === "Kasikornbank (KBank)"
+                  ? "Not provided"
+                  : seller.bankName,
+              maskedAccountNumber:
+                seller.maskedAccountNumber === "•••• 8821"
+                  ? "Not provided"
+                  : seller.maskedAccountNumber,
+              stripeConnectStatus:
+                seller.stripeConnectStatus === "Active"
+                  ? "Not connected"
+                  : seller.stripeConnectStatus,
+            }))
+          );
           return;
         }
       }
       throw new Error("Failed to load seller profiles");
-    } catch {
-      setSellers([
-        {
-          sellerId: 2,
-          name: "VintageFinds",
-          email: "vintage@thai.com",
-          bankName: "Kasikornbank (KBank)",
-          maskedAccountNumber: "•••• 8821",
-          stripeConnectStatus: "Active",
-          pendingEarnings: 360,
-          eligibleEarnings: 765,
-          completedPayouts: 3400,
-        },
-        {
-          sellerId: 3,
-          name: "UrbanWear",
-          email: "urban@brand.com",
-          bankName: "Siam Commercial Bank (SCB)",
-          maskedAccountNumber: "•••• 4490",
-          stripeConnectStatus: "Active",
-          pendingEarnings: 1080,
-          eligibleEarnings: 0,
-          completedPayouts: 8200,
-        },
-      ]);
+    } catch (err) {
+      setSellers([]);
+      setLoadError(err instanceof Error ? err.message : "Could not load seller payout profiles.");
     }
   }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     await Promise.all([fetchPayoutOrders(), fetchSellerProfiles()]);
     setLoading(false);
   }, [fetchPayoutOrders, fetchSellerProfiles]);
@@ -311,29 +218,33 @@ export default function PayoutsPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: selectedOrderForRelease.orderId,
-          notes: releaseNote || "MOCK PAYOUT - Released by Admin",
+          notes: releaseNote || "Released by admin",
         }),
       });
 
       const json = await res.json();
-      if (!res.ok || !json.ok) {
+      if (!res.ok || !json.ok || json.isMock === true || json.payout?.isMock === true) {
         throw new Error(json.message || json.error?.message || "Failed to release payout.");
+      }
+      if (!json.payout?.transferId || json.payout.transferId.startsWith("tr_mock_")) {
+        throw new Error("The backend did not confirm a real Stripe transfer. No payout was recorded.");
       }
 
       setOperationResult({
         type: "success",
-        message: `MOCK Payout Released! Amount: ${selectedOrderForRelease.sellerAmount.toLocaleString()} THB transferred to ${
-          selectedOrderForRelease.seller.name
-        } (${selectedOrderForRelease.seller.bankName} ${selectedOrderForRelease.seller.bankAccountLast4 ? "•••• " + selectedOrderForRelease.seller.bankAccountLast4 : ""}). Simulated mock transfer recorded.`,
+        message: `Stripe transfer of ${selectedOrderForRelease.sellerAmount.toLocaleString()} THB was created for ${selectedOrderForRelease.seller.name}.`,
         details: json.payout,
       });
 
       // Refresh data
       await loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setOperationResult({
         type: "error",
-        message: err.message || "An unexpected error occurred during payout release.",
+        message:
+          err instanceof Error
+            ? err.message
+            : "An unexpected error occurred during payout release.",
       });
     } finally {
       setIsReleasing(false);
@@ -362,19 +273,22 @@ export default function PayoutsPage({
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl md:text-3xl font-bold text-[#2d3748]">
-              Seller Payout Management
-            </h1>
-            <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              MOCK Mode Active
-            </span>
-          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-[#2d3748]">
+            Seller Payout Management
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
             48-hour delivery dispute hold enforcement, escrow releases, and banking profiles
           </p>
         </div>
+
+        {loadError && (
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+          >
+            {loadError}
+          </div>
+        )}
 
         <button
           onClick={loadData}
@@ -520,7 +434,9 @@ export default function PayoutsPage({
                               {o.seller.name}
                             </div>
                             <div className="text-[11px] text-gray-400">
-                              {o.seller.bankName} •••• {o.seller.bankAccountLast4}
+                              {o.seller.bankAccountLast4
+                                ? `${o.seller.bankName} •••• ${o.seller.bankAccountLast4}`
+                                : o.seller.bankName}
                             </div>
                           </td>
 
@@ -640,7 +556,9 @@ export default function PayoutsPage({
                                       ? "48h window not expired"
                                       : o.hasActiveDispute
                                       ? "Active dispute blocks payout"
-                                      : "Payout ineligible or already processed"
+                                        : o.seller.stripeConnectStatus !== "Connected"
+                                        ? "Seller has no connected Stripe account"
+                                        : "Payout ineligible or already processed"
                                     : "Release Seller Payment"
                                 }
                               >
@@ -667,8 +585,7 @@ export default function PayoutsPage({
             <Info className="text-blue-600 mt-0.5 shrink-0" size={18} />
             <div className="text-xs text-blue-900 leading-relaxed">
               <span className="font-bold">Requirement 11 - Seller Banking &amp; Payout Standing: </span>
-              Bank accounts are masked for privacy. Automatic Stripe Connect onboarding will be
-              enabled in future releases. Payout releases currently execute in verified MOCK mode.
+              Payouts are released to sellers through their connected Stripe accounts. Bank details are displayed only when available.
             </div>
           </div>
 
@@ -701,7 +618,7 @@ export default function PayoutsPage({
                         {s.maskedAccountNumber}
                       </td>
                       <td className="px-5 py-4">
-                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-gray-100 text-gray-700">
                           {s.stripeConnectStatus}
                         </span>
                       </td>
@@ -736,7 +653,6 @@ export default function PayoutsPage({
                 <div>
                   <h3 className="text-lg font-bold text-[#2d3748]">RELEASE SELLER PAYMENT</h3>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                    MOCK Mode Payout
                   </span>
                 </div>
               </div>
@@ -782,11 +698,8 @@ export default function PayoutsPage({
                   </span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-500">
-                  <span>Destination Bank:</span>
-                  <span>
-                    {selectedOrderForRelease.seller.bankName} (••••{" "}
-                    {selectedOrderForRelease.seller.bankAccountLast4})
-                  </span>
+                  <span>Stripe Connect:</span>
+                  <span>{selectedOrderForRelease.seller.stripeConnectStatus}</span>
                 </div>
               </div>
 
@@ -825,7 +738,7 @@ export default function PayoutsPage({
                     <p className="font-semibold">{operationResult.message}</p>
                     {operationResult.details?.transferId && (
                       <p className="font-mono text-[11px] text-gray-500 mt-1">
-                        Mock Transfer Ref: {operationResult.details.transferId}
+                        Stripe Transfer ID: {operationResult.details.transferId}
                       </p>
                     )}
                   </div>

@@ -50,6 +50,27 @@ interface Payment {
   createdAt: string;
 }
 
+interface OrderApiUser {
+  username?: string;
+  data?: { attributes?: { username?: string } };
+}
+
+interface OrderApiAttributes {
+  orderRef?: string;
+  totalAmount?: string | number;
+  total?: string | number;
+  buyer?: OrderApiUser | null;
+  seller?: OrderApiUser | null;
+  paymentStatus?: string;
+  status?: string;
+  createdAt?: string;
+}
+
+interface OrderApiRecord extends OrderApiAttributes {
+  id: number;
+  attributes?: OrderApiAttributes;
+}
+
 interface RefundRecord {
   id: number;
   refundId: string;
@@ -64,7 +85,6 @@ interface RefundRecord {
   requestDate: string;
   processingDate: string;
   completionDate: string | null;
-  isMock: boolean;
 }
 
 interface AuditTransaction {
@@ -76,8 +96,7 @@ interface AuditTransaction {
     | "SELLER_TRANSFER"
     | "SELLER_BANK_PAYOUT"
     | "BUYER_REFUND"
-    | "TRANSFER_REVERSAL"
-    | "MOCK_PAYOUT";
+    | "TRANSFER_REVERSAL";
   amount: number;
   currency: string;
   stripeReference: string;
@@ -85,7 +104,6 @@ interface AuditTransaction {
   initiatedBy: string;
   createdAt: string;
   processedAt: string;
-  isMock: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -113,7 +131,6 @@ const txTypeColors: Record<string, { bg: string; text: string }> = {
   SELLER_BANK_PAYOUT: { bg: "bg-purple-50 text-purple-700", text: "Bank Payout" },
   BUYER_REFUND: { bg: "bg-rose-50 text-rose-700", text: "Buyer Refund" },
   TRANSFER_REVERSAL: { bg: "bg-orange-50 text-orange-700", text: "Reversal" },
-  MOCK_PAYOUT: { bg: "bg-amber-50 text-amber-700", text: "Mock Payout" },
 };
 
 export default function Payments({
@@ -126,22 +143,12 @@ export default function Payments({
   );
 
   // Financial summary (Authoritative backend-calculated values)
-  const [summary, setSummary] = useState<FinancialSummary>({
-    totalPaymentsReceived: 0,
-    totalPlatformCommission: 0,
-    totalSellerEarnings: 0,
-    pendingPayouts: 0,
-    eligiblePayouts: 0,
-    payoutsOnHold: 0,
-    completedPayouts: 0,
-    openDisputes: 0,
-    pendingRefunds: 0,
-    currency: "THB",
-  });
+  const [summary, setSummary] = useState<FinancialSummary | null>(null);
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [transactions, setTransactions] = useState<AuditTransaction[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -156,14 +163,13 @@ export default function Payments({
       const res = await fetch(`${API_BASE_URL}/api/admin/financial-summary`, {
         headers: { "Content-Type": "application/json" },
       });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.ok && json.data) {
-          setSummary(json.data);
-        }
-      }
+      if (!res.ok) throw new Error("Could not load financial summary.");
+      const json = await res.json();
+      if (!json.ok || !json.data) throw new Error("Financial summary is unavailable.");
+      setSummary(json.data);
     } catch (err) {
-      console.warn("Could not load backend financial summary:", err);
+      setSummary(null);
+      setLoadError(err instanceof Error ? err.message : "Could not load financial summary.");
     }
   }, []);
 
@@ -174,11 +180,11 @@ export default function Payments({
         `${API_BASE_URL}/api/orders?populate[buyer]=true&populate[seller]=true&pagination[pageSize]=100&sort[0]=createdAt:desc`,
         { headers: { "Content-Type": "application/json" } }
       );
-      if (!res.ok) throw new Error("Failed");
-      const json = await res.json();
-      const mapped: Payment[] = (json.data || []).map((o: any) => {
+      if (!res.ok) throw new Error("Could not load customer payments.");
+      const json = (await res.json()) as { data?: OrderApiRecord[] };
+      const mapped: Payment[] = (json.data || []).map((o) => {
         const a = o.attributes ?? o;
-        const total = parseFloat(a.totalAmount ?? a.total ?? 0);
+        const total = Number(a.totalAmount ?? a.total ?? 0);
         const comm = Math.round(total * (commissionRate / 100) * 100) / 100;
         return {
           id: o.id,
@@ -189,58 +195,13 @@ export default function Payments({
           commission: comm,
           sellerAmount: Math.round((total - comm) * 100) / 100,
           status: (a.paymentStatus ?? a.status ?? "pending").toLowerCase(),
-          createdAt: a.createdAt,
+          createdAt: a.createdAt || "",
         };
       });
       setPayments(mapped);
-    } catch {
-      // Fallback placeholder data if offline
-      setPayments([
-        {
-          id: 1,
-          orderRef: "ORD-00001",
-          buyer: "Aria K.",
-          seller: "VintageFinds",
-          amount: 850,
-          commission: 85,
-          sellerAmount: 765,
-          status: "paid",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 2,
-          orderRef: "ORD-00002",
-          buyer: "Ben T.",
-          seller: "UrbanWear",
-          amount: 1200,
-          commission: 120,
-          sellerAmount: 1080,
-          status: "paid",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 3,
-          orderRef: "ORD-00003",
-          buyer: "Chanya R.",
-          seller: "RetroThai",
-          amount: 400,
-          commission: 40,
-          sellerAmount: 360,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 4,
-          orderRef: "ORD-00004",
-          buyer: "Daniel M.",
-          seller: "UrbanWear",
-          amount: 960,
-          commission: 96,
-          sellerAmount: 864,
-          status: "refunded",
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+    } catch (err) {
+      setPayments([]);
+      setLoadError(err instanceof Error ? err.message : "Could not load payments.");
     }
   }, [commissionRate]);
 
@@ -253,30 +214,20 @@ export default function Payments({
       if (res.ok) {
         const json = await res.json();
         if (json.ok && Array.isArray(json.data)) {
-          setRefunds(json.data);
+          setRefunds(
+            json.data.filter(
+              (refund: RefundRecord & { isMock?: boolean }) =>
+                refund.isMock !== true &&
+                !refund.stripeRefundId?.startsWith("re_mock_")
+            )
+          );
           return;
         }
       }
       throw new Error("Failed to fetch refunds");
-    } catch {
-      setRefunds([
-        {
-          id: 1,
-          refundId: "REF-0001",
-          orderId: 4,
-          orderNumber: "ORD-00004",
-          buyer: "Daniel M.",
-          seller: "UrbanWear",
-          refundAmount: 960,
-          reason: "Damaged product on arrival",
-          stripeRefundId: "re_mock_9921448",
-          status: "SUCCEEDED",
-          requestDate: new Date(Date.now() - 3600000 * 48).toISOString(),
-          processingDate: new Date(Date.now() - 3600000 * 24).toISOString(),
-          completionDate: new Date(Date.now() - 3600000 * 24).toISOString(),
-          isMock: true,
-        },
-      ]);
+    } catch (err) {
+      setRefunds([]);
+      setLoadError(err instanceof Error ? err.message : "Could not load refunds.");
     }
   }, []);
 
@@ -289,45 +240,27 @@ export default function Payments({
       if (res.ok) {
         const json = await res.json();
         if (json.ok && Array.isArray(json.data)) {
-          setTransactions(json.data);
+          setTransactions(
+            json.data.filter(
+              (transaction: AuditTransaction & { isMock?: boolean }) =>
+                transaction.isMock !== true &&
+                String(transaction.type) !== "MOCK_PAYOUT" &&
+                !/^(tr|po|re)_mock_/.test(transaction.stripeReference)
+            )
+          );
           return;
         }
       }
       throw new Error("Failed to load transactions");
-    } catch {
-      setTransactions([
-        {
-          id: "TX-PAY-001",
-          orderId: "ORD-00001",
-          type: "CUSTOMER_PAYMENT",
-          amount: 850,
-          currency: "THB",
-          stripeReference: "pi_test_30920491",
-          status: "COMPLETED",
-          initiatedBy: "Aria K.",
-          createdAt: new Date().toISOString(),
-          processedAt: new Date().toISOString(),
-          isMock: false,
-        },
-        {
-          id: "TX-COM-001",
-          orderId: "ORD-00001",
-          type: "PLATFORM_COMMISSION",
-          amount: 85,
-          currency: "THB",
-          stripeReference: "fee_reluv_001",
-          status: "COMPLETED",
-          initiatedBy: "System",
-          createdAt: new Date().toISOString(),
-          processedAt: new Date().toISOString(),
-          isMock: false,
-        },
-      ]);
+    } catch (err) {
+      setTransactions([]);
+      setLoadError(err instanceof Error ? err.message : "Could not load transactions.");
     }
   }, []);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     await Promise.all([
       fetchFinancialSummary(),
       fetchPayments(),
@@ -504,6 +437,15 @@ export default function Payments({
         </button>
       </div>
 
+      {loadError && (
+        <div
+          role="alert"
+          className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+        >
+          {loadError} Financial data shown below is limited to successfully loaded records.
+        </div>
+      )}
+
       {/* ── 1. The 9 Required Financial Summary Cards (Backend-backed) ────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 mb-8">
         {/* 1. TOTAL PAYMENTS RECEIVED */}
@@ -517,9 +459,9 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-[#2d3748]">
-            {summary.totalPaymentsReceived.toLocaleString("en-US", {
+            {summary?.totalPaymentsReceived.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-            })}{" "}
+            }) ?? "—"}{" "}
             <span className="text-xs font-normal text-gray-400">THB</span>
           </p>
           <p className="text-[11px] text-gray-400 mt-1">Gross paid buyer volume</p>
@@ -536,9 +478,9 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-[#cb6f4d]">
-            {summary.totalPlatformCommission.toLocaleString("en-US", {
+            {summary?.totalPlatformCommission.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-            })}{" "}
+            }) ?? "—"}{" "}
             <span className="text-xs font-normal text-[#cb6f4d]/70">THB</span>
           </p>
           <p className="text-[11px] text-[#cb6f4d]/70 mt-1">Net platform revenue</p>
@@ -555,9 +497,9 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-[#2d3748]">
-            {summary.totalSellerEarnings.toLocaleString("en-US", {
+            {summary?.totalSellerEarnings.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-            })}{" "}
+            }) ?? "—"}{" "}
             <span className="text-xs font-normal text-gray-400">THB</span>
           </p>
           <p className="text-[11px] text-gray-400 mt-1">Total allocated to sellers</p>
@@ -574,9 +516,9 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-[#f2994a]">
-            {summary.pendingPayouts.toLocaleString("en-US", {
+            {summary?.pendingPayouts.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-            })}{" "}
+            }) ?? "—"}{" "}
             <span className="text-xs font-normal text-gray-400">THB</span>
           </p>
           <p className="text-[11px] text-gray-400 mt-1">Undelivered or within 48h dispute window</p>
@@ -593,9 +535,9 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-emerald-700">
-            {summary.eligiblePayouts.toLocaleString("en-US", {
+            {summary?.eligiblePayouts.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-            })}{" "}
+            }) ?? "—"}{" "}
             <span className="text-xs font-normal text-emerald-600/70">THB</span>
           </p>
           <p className="text-[11px] text-emerald-600 mt-1">
@@ -614,9 +556,9 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-rose-700">
-            {summary.payoutsOnHold.toLocaleString("en-US", {
+            {summary?.payoutsOnHold.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-            })}{" "}
+            }) ?? "—"}{" "}
             <span className="text-xs font-normal text-rose-600/70">THB</span>
           </p>
           <p className="text-[11px] text-rose-600 mt-1">Blocked by active disputes or refund reviews</p>
@@ -633,12 +575,12 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-[#2d3748]">
-            {summary.completedPayouts.toLocaleString("en-US", {
+            {summary?.completedPayouts.toLocaleString("en-US", {
               minimumFractionDigits: 2,
-            })}{" "}
+            }) ?? "—"}{" "}
             <span className="text-xs font-normal text-gray-400">THB</span>
           </p>
-          <p className="text-[11px] text-gray-400 mt-1">Disbursed via mock/bank transfers</p>
+          <p className="text-[11px] text-gray-400 mt-1">Confirmed seller transfers</p>
         </div>
 
         {/* 8. OPEN DISPUTES */}
@@ -652,7 +594,7 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-orange-600">
-            {summary.openDisputes}{" "}
+            {summary?.openDisputes ?? "—"}{" "}
             <span className="text-xs font-normal text-gray-400">Cases</span>
           </p>
           <p className="text-[11px] text-gray-400 mt-1">Active complaints requiring admin review</p>
@@ -669,7 +611,7 @@ export default function Payments({
             </div>
           </div>
           <p className="text-2xl font-bold text-blue-600">
-            {summary.pendingRefunds}{" "}
+            {summary?.pendingRefunds ?? "—"}{" "}
             <span className="text-xs font-normal text-gray-400">Requests</span>
           </p>
           <p className="text-[11px] text-gray-400 mt-1">Awaiting refund authorization</p>
@@ -896,7 +838,7 @@ export default function Payments({
                     <th className="px-5 py-4">Seller</th>
                     <th className="px-5 py-4">Refund Amount</th>
                     <th className="px-5 py-4">Reason</th>
-                    <th className="px-5 py-4">Stripe / Mock ID</th>
+                    <th className="px-5 py-4">Stripe Refund ID</th>
                     <th className="px-5 py-4 text-center">Status</th>
                     <th className="px-5 py-4">Dates (Req / Comp)</th>
                   </tr>
@@ -935,13 +877,8 @@ export default function Payments({
                         </td>
                         <td className="px-5 py-4 text-xs font-mono text-gray-500">
                           <span className="bg-gray-100 px-2 py-0.5 rounded text-[11px]">
-                            {r.stripeRefundId}
+                            {r.stripeRefundId || "—"}
                           </span>
-                          {r.isMock && (
-                            <span className="ml-1 text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.2 rounded">
-                              MOCK
-                            </span>
-                          )}
                         </td>
                         <td className="px-5 py-4 text-center">
                           <span
@@ -1014,7 +951,6 @@ export default function Payments({
                 <option value="SELLER_TRANSFER">Seller Transfer</option>
                 <option value="SELLER_BANK_PAYOUT">Bank Payout</option>
                 <option value="BUYER_REFUND">Buyer Refund</option>
-                <option value="MOCK_PAYOUT">Mock Payout</option>
               </select>
 
               <select
@@ -1090,11 +1026,6 @@ export default function Payments({
                             >
                               {badge.text}
                             </span>
-                            {tx.isMock && (
-                              <span className="ml-1 text-[9px] font-bold bg-amber-200 text-amber-900 px-1 py-0.5 rounded">
-                                MOCK
-                              </span>
-                            )}
                           </td>
                           <td className="px-5 py-4 text-sm font-bold text-[#2d3748]">
                             {tx.amount.toLocaleString()} {tx.currency}
