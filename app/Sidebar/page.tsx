@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import { 
   LayoutDashboard, Users, Package, ShoppingCart, 
   CreditCard, ShieldCheck, Banknote, Scale, 
@@ -26,11 +27,16 @@ return (
     <div className="w-64 bg-[#cb6f4d] h-screen text-white flex flex-col font-sans transition-all duration-300">
       {/* Brand Logo Area */}
       <div className="p-6 flex justify-between items-center">
-        <h1 className="text-4xl font-black italic tracking-tighter" style={{ fontFamily: 'serif' }}>
-          Reluv
-        </h1>
+        <Image
+          src="/Relove_HD_Logo_White.png"
+          alt="Relove Logo"
+          width={510}
+          height={244}
+          className="w-full max-w-[170px] h-auto"
+          priority
+        />
         {/* Mobile Close Button */}
-        <button onClick={onClose} className="lg:hidden p-1 hover:bg-white/10 rounded">
+        <button onClick={onClose} className="lg:hidden self-start p-1 hover:bg-white/10 rounded mt-3">
           <X size={24} />
         </button>
       </div>
