@@ -44,6 +44,8 @@ interface DisputeItem {
     username: string;
     email: string;
     bankAccountLast4?: string;
+    stripeAccountId?: string;
+    stripeConnectStatus?: string;
     blocked?: boolean;
   };
   product: {
@@ -69,12 +71,45 @@ interface DisputeItem {
     | "CLOSED";
   resolution: string | null;
   adminNotes: string | null;
+  adminDecision?: string | null;
+  stripeRefundId?: string | null;
+  refundStatus?: string;
   refundAmount: number;
-  payoutHoldStatus: "ON_HOLD" | "RELEASED" | "BLOCKED_REFUNDED";
+  resolvedAt?: string | null;
+  orderPaymentStatus?: string;
+  orderPayoutStatus?: string;
+  hasStripePayment?: boolean;
+  payoutHoldStatus: "ON_HOLD" | "RELEASED" | "BLOCKED_REFUNDED" | "PAID";
   createdDate: string;
   deliveryDate: string | null;
   disputeDeadline: string | null;
   paymentDate: string | null;
+}
+
+const FINALIZED_STATUSES = [
+  "RESOLVED_REFUND",
+  "RESOLVED_RELEASE",
+  "RESOLVED",
+  "REJECTED",
+  "CLOSED",
+];
+
+function parseEvidenceUrls(evidence: string | null | undefined): string[] {
+  if (!evidence) return [];
+  const trimmed = String(evidence).trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((u) => String(u || "").trim()).filter(Boolean);
+      }
+    } catch {}
+  }
+  return trimmed
+    .split(/[\n,]+/)
+    .map((u) => u.trim())
+    .filter(Boolean);
 }
 
 const STATUS_BADGES: Record<string, string> = {
@@ -83,7 +118,7 @@ const STATUS_BADGES: Record<string, string> = {
   AWAITING_INFORMATION: "bg-purple-100 text-purple-800 border-purple-300 font-bold",
   RESOLVED_REFUND: "bg-blue-100 text-blue-800 border-blue-300 font-bold",
   RESOLVED_RELEASE: "bg-emerald-100 text-emerald-800 border-emerald-300 font-bold",
-  RESOLVED: "bg-emerald-100 text-emerald-800 border-emerald-300 font-bold",
+  RESOLVED: "bg-teal-100 text-teal-800 border-teal-300 font-bold",
   REJECTED: "bg-gray-100 text-gray-800 border-gray-300",
   CLOSED: "bg-gray-100 text-gray-600 border-gray-200",
 };
@@ -100,13 +135,104 @@ const REASON_LABELS: Record<string, string> = {
 
 const BAN_RECOMMEND_THRESHOLD = 3;
 
+type DisputeActionType =
+  | "UNDER_REVIEW"
+  | "REQUEST_MORE_INFO"
+  | "REFUND_BUYER"
+  | "RELEASE_TO_SELLER"
+  | "MARK_RESOLVED"
+  | "REJECT_DISPUTE"
+  | "CLOSE_DISPUTE";
+
 interface DisputeActionPayload {
   disputeId: number | string;
-  action: "REFUND_BUYER" | "RELEASE_TO_SELLER" | "REQUEST_MORE_INFO";
+  action: DisputeActionType;
   refundAmount?: number;
   resolution?: string;
   adminNotes?: string;
 }
+
+const GENERIC_NOTE_ACTION_CONFIG: Record<
+  "UNDER_REVIEW" | "REQUEST_MORE_INFO" | "MARK_RESOLVED" | "REJECT_DISPUTE" | "CLOSE_DISPUTE",
+  {
+    title: string;
+    targetStatus: DisputeItem["status"];
+    badgeClass: string;
+    description: string;
+    label: string;
+    placeholder: string;
+    buttonLabel: string;
+    loadingLabel: string;
+    buttonClass: string;
+    requireInput: boolean;
+  }
+> = {
+  UNDER_REVIEW: {
+    title: "Start Review / Add Admin Notes",
+    targetStatus: "UNDER_REVIEW",
+    badgeClass: "text-amber-700",
+    description:
+      "Moves active disputes to UNDER_REVIEW and records your investigation notes while keeping the seller payout ON HOLD.",
+    label: "Admin Review Notes:",
+    placeholder: "Record verification checks, seller/buyer statements, or internal investigation notes...",
+    buttonLabel: "SAVE & MARK UNDER REVIEW",
+    loadingLabel: "Saving Review Notes...",
+    buttonClass: "bg-amber-600 hover:bg-amber-700",
+    requireInput: true,
+  },
+  REQUEST_MORE_INFO: {
+    title: "Request More Information",
+    targetStatus: "AWAITING_INFORMATION",
+    badgeClass: "text-purple-700",
+    description:
+      "Moves status to AWAITING_INFORMATION and notifies the buyer to upload additional photos/evidence. Seller payout stays ON HOLD.",
+    label: "Required Explanation / Image Evidence Request for Buyer:",
+    placeholder: "Specify clear photos, unboxing evidence, or courier proof needed from buyer...",
+    buttonLabel: "SEND INFO REQUEST",
+    loadingLabel: "Notifying Buyer...",
+    buttonClass: "bg-purple-600 hover:bg-purple-700",
+    requireInput: true,
+  },
+  MARK_RESOLVED: {
+    title: "Mark Dispute as Resolved",
+    targetStatus: "RESOLVED",
+    badgeClass: "text-teal-700",
+    description:
+      "Marks dispute RESOLVED (e.g., settled mutually or offline) without triggering an automatic Stripe refund/transfer, and removes the dispute hold.",
+    label: "Resolution Summary Note (Required):",
+    placeholder: "Summarize how the dispute was resolved...",
+    buttonLabel: "CONFIRM RESOLVED",
+    loadingLabel: "Marking Resolved...",
+    buttonClass: "bg-teal-600 hover:bg-teal-700",
+    requireInput: true,
+  },
+  REJECT_DISPUTE: {
+    title: "Reject Buyer Dispute",
+    targetStatus: "REJECTED",
+    badgeClass: "text-gray-800",
+    description:
+      "Marks dispute REJECTED when buyer claim is not upheld, lifts the dispute hold, and restores normal 48h seller payout eligibility.",
+    label: "Rejection Reason (Required):",
+    placeholder: "Explain why this dispute claim was rejected...",
+    buttonLabel: "CONFIRM REJECT",
+    loadingLabel: "Rejecting Dispute...",
+    buttonClass: "bg-gray-800 hover:bg-gray-900",
+    requireInput: true,
+  },
+  CLOSE_DISPUTE: {
+    title: "Close Dispute",
+    targetStatus: "CLOSED",
+    badgeClass: "text-slate-700",
+    description:
+      "Closes the dispute (CLOSED) and lifts the dispute payout hold according to the order's 48h delivery schedule.",
+    label: "Closure Reason (Required):",
+    placeholder: "Enter reason for closing this dispute...",
+    buttonLabel: "CONFIRM CLOSE",
+    loadingLabel: "Closing Dispute...",
+    buttonClass: "bg-slate-700 hover:bg-slate-800",
+    requireInput: true,
+  },
+};
 
 export default function DisputesPage() {
   const [disputes, setDisputes] = useState<DisputeItem[]>([]);
@@ -119,9 +245,7 @@ export default function DisputesPage() {
   const [selectedDispute, setSelectedDispute] = useState<DisputeItem | null>(null);
 
   // Modal Actions
-  const [actionType, setActionType] = useState<
-    "REFUND_BUYER" | "RELEASE_TO_SELLER" | "REQUEST_MORE_INFO" | null
-  >(null);
+  const [actionType, setActionType] = useState<DisputeActionType | null>(null);
   const [actionInput, setActionInput] = useState("");
   const [customRefundAmount, setCustomRefundAmount] = useState<number | "">("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -147,6 +271,9 @@ export default function DisputesPage() {
         throw new Error("Dispute records are unavailable.");
       }
       setDisputes(json.data);
+      setSelectedDispute((prev) =>
+        prev ? json.data.find((d: DisputeItem) => d.id === prev.id) || prev : null
+      );
     } catch (err) {
       setDisputes([]);
       setLoadError(err instanceof Error ? err.message : "Could not load disputes.");
@@ -179,12 +306,17 @@ export default function DisputesPage() {
         payload.resolution =
           actionInput.trim() ||
           `Refund of ${payload.refundAmount} THB authorized to buyer original payment method.`;
-        payload.adminNotes = actionInput.trim();
+        payload.adminNotes = actionInput.trim() || undefined;
       } else if (actionType === "RELEASE_TO_SELLER") {
         if (!actionInput.trim()) {
-          throw new Error("Admin resolution note is required when resolving in favor of seller.");
+          throw new Error("Admin resolution note is required when releasing payout to seller.");
         }
         payload.resolution = actionInput.trim();
+        payload.adminNotes = actionInput.trim();
+      } else if (actionType === "UNDER_REVIEW") {
+        if (!actionInput.trim()) {
+          throw new Error("Please enter admin review notes.");
+        }
         payload.adminNotes = actionInput.trim();
       } else if (actionType === "REQUEST_MORE_INFO") {
         if (!actionInput.trim()) {
@@ -192,6 +324,12 @@ export default function DisputesPage() {
         }
         payload.adminNotes = actionInput.trim();
         payload.resolution = `Admin requested info: ${actionInput.trim()}`;
+      } else {
+        if (!actionInput.trim()) {
+          throw new Error("Please provide a resolution or closure reason.");
+        }
+        payload.resolution = actionInput.trim();
+        payload.adminNotes = actionInput.trim();
       }
 
       const res = await fetch(`${API_BASE_URL}/api/admin/dispute-action`, {
@@ -210,24 +348,8 @@ export default function DisputesPage() {
         message: json.message || "Action completed successfully.",
       });
 
-      // Refresh dispute list
+      // Refresh dispute list & selected drawer data
       await fetchDisputes();
-
-      // Update selected dispute locally
-      if (selectedDispute) {
-        setSelectedDispute({
-          ...selectedDispute,
-          status: json.status || selectedDispute.status,
-          resolution: payload.resolution ?? selectedDispute.resolution,
-          adminNotes: payload.adminNotes ?? selectedDispute.adminNotes,
-          payoutHoldStatus:
-            actionType === "RELEASE_TO_SELLER"
-              ? "RELEASED"
-              : actionType === "REFUND_BUYER"
-              ? "BLOCKED_REFUNDED"
-              : "ON_HOLD",
-        });
-      }
 
       setTimeout(() => {
         setActionType(null);
@@ -279,17 +401,12 @@ export default function DisputesPage() {
       (d.reason && d.reason.toLowerCase().includes(q));
 
     let matchesFilter = true;
-    if (statusFilter === "OPEN") {
-      matchesFilter = d.status === "OPEN";
-    } else if (statusFilter === "UNDER_REVIEW") {
-      matchesFilter = d.status === "UNDER_REVIEW";
-    } else if (statusFilter === "AWAITING_INFORMATION") {
-      matchesFilter = d.status === "AWAITING_INFORMATION";
-    } else if (statusFilter === "RESOLVED") {
-      matchesFilter =
-        d.status === "RESOLVED" ||
-        d.status === "RESOLVED_REFUND" ||
-        d.status === "RESOLVED_RELEASE";
+    if (statusFilter === "ALL") {
+      matchesFilter = true;
+    } else if (statusFilter === "RESOLVED_GROUP") {
+      matchesFilter = FINALIZED_STATUSES.includes(d.status);
+    } else {
+      matchesFilter = d.status === statusFilter;
     }
 
     return matchesSearch && matchesFilter;
@@ -349,15 +466,31 @@ export default function DisputesPage() {
           />
         </div>
 
-        {/* Required Filters: ALL, OPEN, UNDER REVIEW, AWAITING INFORMATION, RESOLVED */}
+        {/* Status Filters */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-          {["ALL", "OPEN", "UNDER_REVIEW", "AWAITING_INFORMATION", "RESOLVED"].map((filter) => {
+          {[
+            "ALL",
+            "OPEN",
+            "UNDER_REVIEW",
+            "AWAITING_INFORMATION",
+            "RESOLVED_GROUP",
+            "RESOLVED_REFUND",
+            "RESOLVED_RELEASE",
+            "RESOLVED",
+            "REJECTED",
+            "CLOSED",
+          ].map((filter) => {
             const labelMap: Record<string, string> = {
               ALL: "All Disputes",
               OPEN: "Open",
               UNDER_REVIEW: "Under Review",
-              AWAITING_INFORMATION: "Awaiting Information",
+              AWAITING_INFORMATION: "Awaiting Info",
+              RESOLVED_GROUP: "All Finalized",
+              RESOLVED_REFUND: "Resolved Refund",
+              RESOLVED_RELEASE: "Resolved Release",
               RESOLVED: "Resolved",
+              REJECTED: "Rejected",
+              CLOSED: "Closed",
             };
             return (
               <button
@@ -415,6 +548,7 @@ export default function DisputesPage() {
                 </tr>
               ) : (
                 filteredDisputes.map((d) => {
+                  const evidenceList = parseEvidenceUrls(d.evidence);
                   return (
                     <tr key={d.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-4 py-4 text-sm font-bold text-gray-800">{d.disputeId}</td>
@@ -432,14 +566,14 @@ export default function DisputesPage() {
                         {REASON_LABELS[d.reason] || d.reason}
                       </td>
                       <td className="px-4 py-4 text-xs">
-                        {d.evidence ? (
+                        {evidenceList.length > 0 ? (
                           <a
-                            href={d.evidence}
+                            href={evidenceList[0]}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 text-[#cb6f4d] font-semibold hover:underline"
                           >
-                            <span>View</span>
+                            <span>View ({evidenceList.length})</span>
                             <ExternalLink size={12} />
                           </a>
                         ) : (
@@ -468,7 +602,7 @@ export default function DisputesPage() {
                             STATUS_BADGES[d.status] || "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {d.status.replace("_", " ")}
+                          {d.status.replace(/_/g, " ")}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">
@@ -481,7 +615,7 @@ export default function DisputesPage() {
                               : "bg-emerald-100 text-emerald-800 border-emerald-300"
                           }`}
                         >
-                          {d.payoutHoldStatus.replace("_", " ")}
+                          {d.payoutHoldStatus.replace(/_/g, " ")}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-right">
@@ -521,7 +655,7 @@ export default function DisputesPage() {
                       STATUS_BADGES[selectedDispute.status] || "bg-gray-100"
                     }`}
                   >
-                    {selectedDispute.status.replace("_", " ")}
+                    {selectedDispute.status.replace(/_/g, " ")}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
@@ -565,8 +699,17 @@ export default function DisputesPage() {
                   </div>
                   <div>
                     <span className="text-gray-400 block">Seller</span>
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-gray-700 block">
                       {selectedDispute.seller.username} ({selectedDispute.seller.email})
+                    </span>
+                    <span
+                      className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                        selectedDispute.seller.stripeConnectStatus === "Connected"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}
+                    >
+                      Stripe Connect: {selectedDispute.seller.stripeConnectStatus || "Not connected"}
                     </span>
                   </div>
                   <div>
@@ -625,9 +768,15 @@ export default function DisputesPage() {
                           : "bg-emerald-100 text-emerald-800"
                       }`}
                     >
-                      {selectedDispute.payoutHoldStatus.replace("_", " ")}
+                      {selectedDispute.payoutHoldStatus.replace(/_/g, " ")}
                     </span>
                   </div>
+                  {selectedDispute.stripeRefundId && (
+                    <div className="flex justify-between text-[11px] text-blue-700 pt-1">
+                      <span>Stripe Refund ID:</span>
+                      <span className="font-mono font-semibold">{selectedDispute.stripeRefundId}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -646,31 +795,45 @@ export default function DisputesPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block">Buyer Description</span>
-                    <p className="bg-[#f8fafd] p-3 rounded-xl text-gray-700 mt-1 border border-gray-100 leading-relaxed">
+                    <span className="text-gray-400 block">Buyer Description &amp; Updates</span>
+                    <p className="bg-[#f8fafd] p-3 rounded-xl text-gray-700 mt-1 border border-gray-100 leading-relaxed whitespace-pre-wrap">
                       {selectedDispute.description || "No description provided."}
                     </p>
                   </div>
 
-                  {selectedDispute.evidence && (
+                  {parseEvidenceUrls(selectedDispute.evidence).length > 0 && (
                     <div>
-                      <span className="text-gray-400 block mb-1">Uploaded Evidence</span>
-                      <a
-                        href={selectedDispute.evidence}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-[#cb6f4d] font-semibold underline"
-                      >
-                        <span>Open Buyer Attachment</span>
-                        <ExternalLink size={12} />
-                      </a>
+                      <span className="text-gray-400 block mb-1.5">
+                        Uploaded Buyer Evidence ({parseEvidenceUrls(selectedDispute.evidence).length})
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {parseEvidenceUrls(selectedDispute.evidence).map((url, idx) => (
+                          <a
+                            key={`${url}-${idx}`}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="group relative rounded-xl border border-gray-200 overflow-hidden bg-gray-50 block"
+                          >
+                            <img
+                              src={url}
+                              alt={`Evidence ${idx + 1}`}
+                              className="h-24 w-full object-cover group-hover:scale-105 transition"
+                            />
+                            <span className="flex items-center justify-between px-2 py-1 text-[10px] text-[#cb6f4d] font-semibold bg-white border-t border-gray-100">
+                              <span>Image #{idx + 1}</span>
+                              <ExternalLink size={10} />
+                            </span>
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {selectedDispute.adminNotes && (
                     <div>
                       <span className="text-gray-400 block">Admin Notes</span>
-                      <p className="bg-amber-50/60 p-3 rounded-xl text-amber-900 mt-1 border border-amber-200 leading-relaxed">
+                      <p className="bg-amber-50/60 p-3 rounded-xl text-amber-900 mt-1 border border-amber-200 leading-relaxed whitespace-pre-wrap">
                         {selectedDispute.adminNotes}
                       </p>
                     </div>
@@ -679,7 +842,7 @@ export default function DisputesPage() {
                   {selectedDispute.resolution && (
                     <div>
                       <span className="text-gray-400 block">Resolution Decision</span>
-                      <p className="bg-emerald-50/60 p-3 rounded-xl text-emerald-900 mt-1 border border-emerald-200 leading-relaxed">
+                      <p className="bg-emerald-50/60 p-3 rounded-xl text-emerald-900 mt-1 border border-emerald-200 leading-relaxed whitespace-pre-wrap">
                         {selectedDispute.resolution}
                       </p>
                     </div>
@@ -690,60 +853,112 @@ export default function DisputesPage() {
               {/* ── 5.4 ADMIN ACTIONS ────────────────────────────────────────── */}
               <div className="bg-linear-to-br from-white to-[#fff8f5] rounded-2xl border border-[#cb6f4d]/30 p-5 space-y-3">
                 <h3 className="text-xs font-black tracking-wider uppercase text-[#cb6f4d]">
-                  ADMIN RESOLUTION ACTIONS
+                  ADMIN RESOLUTION &amp; WORKFLOW ACTIONS
                 </h3>
-                <p className="text-xs text-gray-500">
-                  Select an authoritative resolution. Payout holds are automatically updated.
-                </p>
+                {FINALIZED_STATUSES.includes(selectedDispute.status) ? (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-medium">
+                    This dispute is finalized ({selectedDispute.status.replace(/_/g, " ")}).
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-gray-500">
+                      Review and add notes to move to Under Review, ask buyer for image evidence (Awaiting Info), or apply a final financial/status outcome.
+                    </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                  {/* Action 1: REFUND BUYER */}
-                  <button
-                    onClick={() => {
-                      setActionType("REFUND_BUYER");
-                      setCustomRefundAmount(selectedDispute.refundAmount || selectedDispute.orderAmount);
-                      setActionInput("");
-                      setActionFeedback(null);
-                    }}
-                    className="p-3 rounded-xl border border-rose-200 bg-rose-50/60 hover:bg-rose-100/80 text-rose-800 text-xs font-bold transition flex flex-col items-center text-center gap-1.5 cursor-pointer"
-                  >
-                    <RotateCcw size={18} className="text-rose-600" />
-                    <span>1. REFUND BUYER</span>
-                  </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          setActionType("UNDER_REVIEW");
+                          setActionInput("");
+                          setActionFeedback(null);
+                        }}
+                        className="p-3 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Clock size={16} className="text-amber-700" />
+                        <span>REVIEW &amp; ADD NOTES (UNDER REVIEW)</span>
+                      </button>
 
-                  {/* Action 2: RELEASE TO SELLER */}
-                  <button
-                    onClick={() => {
-                      setActionType("RELEASE_TO_SELLER");
-                      setActionInput("");
-                      setActionFeedback(null);
-                    }}
-                    className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100/80 text-emerald-800 text-xs font-bold transition flex flex-col items-center text-center gap-1.5 cursor-pointer"
-                  >
-                    <CheckCircle2 size={18} className="text-emerald-600" />
-                    <span>2. RELEASE TO SELLER</span>
-                  </button>
+                      <button
+                        onClick={() => {
+                          setActionType("REQUEST_MORE_INFO");
+                          setActionInput("");
+                          setActionFeedback(null);
+                        }}
+                        className="p-3 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-purple-900 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <HelpCircle size={16} className="text-purple-700" />
+                        <span>REQUEST INFO / IMAGES</span>
+                      </button>
+                    </div>
 
-                  {/* Action 3: REQUEST MORE INFORMATION */}
-                  <button
-                    onClick={() => {
-                      setActionType("REQUEST_MORE_INFO");
-                      setActionInput("");
-                      setActionFeedback(null);
-                    }}
-                    className="p-3 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100/80 text-purple-800 text-xs font-bold transition flex flex-col items-center text-center gap-1.5 cursor-pointer"
-                  >
-                    <HelpCircle size={18} className="text-purple-600" />
-                    <span>3. REQUEST MORE INFO</span>
-                  </button>
-                </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          setActionType("REFUND_BUYER");
+                          setCustomRefundAmount(selectedDispute.refundAmount || selectedDispute.orderAmount);
+                          setActionInput("");
+                          setActionFeedback(null);
+                        }}
+                        className="p-3 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-900 text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer"
+                      >
+                        <RotateCcw size={18} className="text-rose-600" />
+                        <span>REFUND BUYER (STRIPE)</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActionType("RELEASE_TO_SELLER");
+                          setActionInput("");
+                          setActionFeedback(null);
+                        }}
+                        className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900 text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer"
+                      >
+                        <CheckCircle2 size={18} className="text-emerald-600" />
+                        <span>PAYOUT TO SELLER (STRIPE CONNECT)</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          setActionType("MARK_RESOLVED");
+                          setActionInput("");
+                          setActionFeedback(null);
+                        }}
+                        className="p-2.5 rounded-xl border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-teal-800 text-[11px] font-bold transition cursor-pointer"
+                      >
+                        MARK RESOLVED
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActionType("REJECT_DISPUTE");
+                          setActionInput("");
+                          setActionFeedback(null);
+                        }}
+                        className="p-2.5 rounded-xl border border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-800 text-[11px] font-bold transition cursor-pointer"
+                      >
+                        REJECT DISPUTE
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActionType("CLOSE_DISPUTE");
+                          setActionInput("");
+                          setActionFeedback(null);
+                        }}
+                        className="p-2.5 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold transition cursor-pointer"
+                      >
+                        CLOSE DISPUTE
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── 6. REFUND BUYER CONFIRMATION MODAL (Requirement 6) ──────────────── */}
+      {/* ── 6. REFUND BUYER CONFIRMATION MODAL ──────────────── */}
       {actionType === "REFUND_BUYER" && selectedDispute && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-150">
@@ -752,7 +967,7 @@ export default function DisputesPage() {
                 <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
                   <RotateCcw size={16} />
                 </div>
-                <h3 className="font-bold text-gray-800 text-base">Refund Buyer</h3>
+                <h3 className="font-bold text-gray-800 text-base">Refund Buyer via Stripe</h3>
               </div>
               <button
                 onClick={() => setActionType(null)}
@@ -790,9 +1005,15 @@ export default function DisputesPage() {
                 </div>
               </div>
 
+              {selectedDispute.hasStripePayment === false && (
+                <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-800 text-[11px]">
+                  This order has no Stripe PaymentIntent/Charge attached, so a live Stripe refund cannot be processed.
+                </div>
+              )}
+
               <p className="text-gray-600 leading-relaxed">
-                This action will initiate a refund to the buyer&apos;s original payment method. Seller payout
-                will remain permanently blocked for this order.
+                This action issues a real Stripe refund to the buyer&apos;s original payment method,
+                updates status to <span className="font-bold">RESOLVED_REFUND</span>, and permanently cancels seller payout.
               </p>
 
               <div>
@@ -856,10 +1077,10 @@ export default function DisputesPage() {
                 {actionLoading ? (
                   <>
                     <Loader2 size={13} className="animate-spin" />
-                    <span>Processing Refund...</span>
+                    <span>Processing Stripe Refund...</span>
                   </>
                 ) : (
-                  <span>CONFIRM REFUND</span>
+                  <span>CONFIRM STRIPE REFUND</span>
                 )}
               </button>
             </div>
@@ -867,7 +1088,7 @@ export default function DisputesPage() {
         </div>
       )}
 
-      {/* ── 7. RELEASE TO SELLER CONFIRMATION MODAL (Requirement 7) ─────────── */}
+      {/* ── 7. PAYOUT TO SELLER (STRIPE CONNECT) CONFIRMATION MODAL ─────────── */}
       {actionType === "RELEASE_TO_SELLER" && selectedDispute && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-150">
@@ -876,7 +1097,7 @@ export default function DisputesPage() {
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
                   <CheckCircle2 size={16} />
                 </div>
-                <h3 className="font-bold text-gray-800 text-base">Release to Seller</h3>
+                <h3 className="font-bold text-gray-800 text-base">Payout to Seller (Stripe Connect)</h3>
               </div>
               <button
                 onClick={() => setActionType(null)}
@@ -897,23 +1118,43 @@ export default function DisputesPage() {
                   <span className="font-semibold text-gray-800">{selectedDispute.seller.username}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Seller Earnings:</span>
+                  <span className="text-gray-400">Seller Stripe Connect:</span>
+                  <span
+                    className={`font-bold ${
+                      selectedDispute.seller.stripeConnectStatus === "Connected"
+                        ? "text-emerald-700"
+                        : "text-rose-700"
+                    }`}
+                  >
+                    {selectedDispute.seller.stripeConnectStatus || "Not connected"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Seller Earnings (90%):</span>
                   <span className="font-extrabold text-emerald-700 text-sm">
                     {selectedDispute.sellerAmount.toLocaleString()} THB
                   </span>
                 </div>
                 <div className="flex justify-between text-gray-500">
-                  <span>Dispute Details:</span>
+                  <span>Dispute Reason:</span>
                   <span>{REASON_LABELS[selectedDispute.reason] || selectedDispute.reason}</span>
                 </div>
               </div>
 
-              <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-amber-900 leading-relaxed text-[11px]">
-                <span className="font-bold">IMPORTANT: </span>
-                Resolving a dispute in favor of the seller removes the dispute hold and marks the
-                order eligible. It does NOT immediately disburse bank funds; you must separately
-                click RELEASE PAYMENT from Payout Management.
-              </div>
+              {selectedDispute.seller.stripeConnectStatus !== "Connected" ? (
+                <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-900 leading-relaxed text-[11px]">
+                  <span className="font-bold">STRIPE CONNECT REQUIRED: </span>
+                  Seller does not have a connected Stripe account yet. They must connect Stripe in
+                  Settings -&gt; Payments first, or choose Reject/Close Dispute instead.
+                </div>
+              ) : (
+                <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200 text-emerald-900 leading-relaxed text-[11px]">
+                  <span className="font-bold">LIVE STRIPE TRANSFER: </span>
+                  Confirming this will execute an immediate Stripe Connect transfer of{" "}
+                  {selectedDispute.sellerAmount.toLocaleString()} THB to the seller&apos;s connected
+                  account and mark the dispute <span className="font-bold">RESOLVED_RELEASE</span>.
+                </div>
+              )}
 
               <div>
                 <label className="text-[11px] font-semibold text-gray-700 block mb-1">
@@ -955,16 +1196,20 @@ export default function DisputesPage() {
               </button>
               <button
                 onClick={handleExecuteAction}
-                disabled={actionLoading || !actionInput.trim()}
+                disabled={
+                  actionLoading ||
+                  !actionInput.trim() ||
+                  selectedDispute.seller.stripeConnectStatus !== "Connected"
+                }
                 className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {actionLoading ? (
                   <>
                     <Loader2 size={13} className="animate-spin" />
-                    <span>Resolving Dispute...</span>
+                    <span>Transferring to Seller...</span>
                   </>
                 ) : (
-                  <span>CONFIRM RELEASE TO SELLER</span>
+                  <span>CONFIRM STRIPE PAYOUT</span>
                 )}
               </button>
             </div>
@@ -972,88 +1217,98 @@ export default function DisputesPage() {
         </div>
       )}
 
-      {/* ── 8. REQUEST MORE INFORMATION MODAL (Requirement 8) ────────────────── */}
-      {actionType === "REQUEST_MORE_INFO" && selectedDispute && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-                  <HelpCircle size={16} />
+      {/* ── 8. STATUS / NOTES / INFO / FINALIZE MODAL ────────────────── */}
+      {actionType &&
+        actionType !== "REFUND_BUYER" &&
+        actionType !== "RELEASE_TO_SELLER" &&
+        selectedDispute && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-150">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
+                    <FileText size={16} />
+                  </div>
+                  <h3 className="font-bold text-gray-800 text-base">
+                    {GENERIC_NOTE_ACTION_CONFIG[actionType].title}
+                  </h3>
                 </div>
-                <h3 className="font-bold text-gray-800 text-base">Request More Information</h3>
-              </div>
-              <button
-                onClick={() => setActionType(null)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="py-4 space-y-3 text-xs text-gray-700">
-              <p className="text-gray-600 leading-relaxed">
-                This will update the dispute status to{" "}
-                <span className="font-bold text-purple-700">AWAITING_INFORMATION</span> and notify the
-                buyer. Seller payout remains strictly <span className="font-bold text-rose-600">ON HOLD</span>.
-              </p>
-
-              <div>
-                <label className="text-[11px] font-semibold text-gray-700 block mb-1">
-                  Required Explanation / Questions for Buyer:
-                </label>
-                <textarea
-                  placeholder="Specify clear photos, packaging images, or courier receipt required from buyer..."
-                  value={actionInput}
-                  onChange={(e) => setActionInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-purple-200 h-24"
-                />
-              </div>
-
-              {actionFeedback && (
-                <div
-                  className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
-                    actionFeedback.type === "success"
-                      ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                      : "bg-rose-50 text-rose-900 border border-rose-200"
-                  }`}
+                <button
+                  onClick={() => setActionType(null)}
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
                 >
-                  {actionFeedback.type === "success" ? (
-                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertTriangle size={16} className="text-rose-600 shrink-0 mt-0.5" />
-                  )}
-                  <span>{actionFeedback.message}</span>
-                </div>
-              )}
-            </div>
+                  <X size={18} />
+                </button>
+              </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
-              <button
-                onClick={() => setActionType(null)}
-                disabled={actionLoading}
-                className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition"
-              >
-                CANCEL
-              </button>
-              <button
-                onClick={handleExecuteAction}
-                disabled={actionLoading || !actionInput.trim()}
-                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                {actionLoading ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Notifying Buyer...</span>
-                  </>
-                ) : (
-                  <span>SEND REQUEST</span>
+              <div className="py-4 space-y-3 text-xs text-gray-700">
+                <p className="text-gray-600 leading-relaxed">
+                  {GENERIC_NOTE_ACTION_CONFIG[actionType].description}{" "}
+                  Target status:{" "}
+                  <span className={`font-bold ${GENERIC_NOTE_ACTION_CONFIG[actionType].badgeClass}`}>
+                    {GENERIC_NOTE_ACTION_CONFIG[actionType].targetStatus}
+                  </span>
+                </p>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-700 block mb-1">
+                    {GENERIC_NOTE_ACTION_CONFIG[actionType].label}
+                  </label>
+                  <textarea
+                    placeholder={GENERIC_NOTE_ACTION_CONFIG[actionType].placeholder}
+                    value={actionInput}
+                    onChange={(e) => setActionInput(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#cb6f4d]/20 h-24"
+                  />
+                </div>
+
+                {actionFeedback && (
+                  <div
+                    className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
+                      actionFeedback.type === "success"
+                        ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                        : "bg-rose-50 text-rose-900 border border-rose-200"
+                    }`}
+                  >
+                    {actionFeedback.type === "success" ? (
+                      <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                    )}
+                    <span>{actionFeedback.message}</span>
+                  </div>
                 )}
-              </button>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                <button
+                  onClick={() => setActionType(null)}
+                  disabled={actionLoading}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleExecuteAction}
+                  disabled={
+                    actionLoading ||
+                    (GENERIC_NOTE_ACTION_CONFIG[actionType].requireInput && !actionInput.trim())
+                  }
+                  className={`px-5 py-2 rounded-xl text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${GENERIC_NOTE_ACTION_CONFIG[actionType].buttonClass}`}
+                >
+                  {actionLoading ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>{GENERIC_NOTE_ACTION_CONFIG[actionType].loadingLabel}</span>
+                    </>
+                  ) : (
+                    <span>{GENERIC_NOTE_ACTION_CONFIG[actionType].buttonLabel}</span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
