@@ -94,6 +94,25 @@ const FINALIZED_STATUSES = [
   "CLOSED",
 ];
 
+function resolveEvidenceUrl(rawUrl: string): string {
+  const trimmed = String(rawUrl || "").trim();
+  if (!trimmed) return "";
+  const baseUrl = API_BASE_URL.replace(/\/+$/, "");
+  if (trimmed.startsWith("/")) {
+    return `${baseUrl}${trimmed}`;
+  }
+  if (trimmed.startsWith("uploads/")) {
+    return `${baseUrl}/${trimmed}`;
+  }
+  const localMatch = trimmed.match(
+    /^https?:\/\/(?:localhost|127\.0\.0\.1|10\.0\.2\.2|0\.0\.0\.0)(?::\d+)?(\/.*)?$/i,
+  );
+  if (localMatch) {
+    return `${baseUrl}${localMatch[1] || ""}`;
+  }
+  return trimmed;
+}
+
 function parseEvidenceUrls(evidence: string | null | undefined): string[] {
   if (!evidence) return [];
   const trimmed = String(evidence).trim();
@@ -102,13 +121,13 @@ function parseEvidenceUrls(evidence: string | null | undefined): string[] {
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
-        return parsed.map((u) => String(u || "").trim()).filter(Boolean);
+        return parsed.map((u) => resolveEvidenceUrl(String(u || ""))).filter(Boolean);
       }
     } catch {}
   }
   return trimmed
     .split(/[\n,]+/)
-    .map((u) => u.trim())
+    .map((u) => resolveEvidenceUrl(u))
     .filter(Boolean);
 }
 
@@ -807,25 +826,39 @@ export default function DisputesPage() {
                         Uploaded Buyer Evidence ({parseEvidenceUrls(selectedDispute.evidence).length})
                       </span>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {parseEvidenceUrls(selectedDispute.evidence).map((url, idx) => (
-                          <a
-                            key={`${url}-${idx}`}
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="group relative rounded-xl border border-gray-200 overflow-hidden bg-gray-50 block"
-                          >
-                            <img
-                              src={url}
-                              alt={`Evidence ${idx + 1}`}
-                              className="h-24 w-full object-cover group-hover:scale-105 transition"
-                            />
-                            <span className="flex items-center justify-between px-2 py-1 text-[10px] text-[#cb6f4d] font-semibold bg-white border-t border-gray-100">
-                              <span>Image #{idx + 1}</span>
-                              <ExternalLink size={10} />
-                            </span>
-                          </a>
-                        ))}
+                        {parseEvidenceUrls(selectedDispute.evidence).map((url, idx) => {
+                          const isPdf = /\.pdf(?:\?|#|$)/i.test(url);
+                          return (
+                            <a
+                              key={`${url}-${idx}`}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="group relative rounded-xl border border-gray-200 overflow-hidden bg-gray-50 block"
+                            >
+                              {isPdf ? (
+                                <div className="h-24 w-full flex flex-col items-center justify-center bg-[#f8fafd] text-[#cb6f4d] px-2">
+                                  <span className="rounded-md bg-[#fdeae3] px-2.5 py-1 text-[11px] font-bold tracking-wide">
+                                    PDF
+                                  </span>
+                                  <span className="mt-1.5 text-[10px] font-medium text-gray-500 truncate max-w-full">
+                                    Click to open
+                                  </span>
+                                </div>
+                              ) : (
+                                <img
+                                  src={url}
+                                  alt={`Evidence ${idx + 1}`}
+                                  className="h-24 w-full object-cover group-hover:scale-105 transition"
+                                />
+                              )}
+                              <span className="flex items-center justify-between px-2 py-1 text-[10px] text-[#cb6f4d] font-semibold bg-white border-t border-gray-100">
+                                <span>{isPdf ? `PDF #${idx + 1}` : `Image #${idx + 1}`}</span>
+                                <ExternalLink size={10} />
+                              </span>
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
